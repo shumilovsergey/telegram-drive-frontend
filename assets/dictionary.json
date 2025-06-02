@@ -1,5 +1,11 @@
 [
-  { "folder": "1.png" },
-  { "txt":    "2.png"    }
+  { "folder": "folder.png" },
+  { "txt":    "txt.png"    },
+  { "doc":    "txt.png"    },
+  { "rar":    "rar.png"    },
+  { "jpg":    "pic.png"    },
+  { "png":    "pic.png"    },
+  { "pdf":    "pdf.png"    },
+  { "exe":    "exe.png"    }
 ]
 

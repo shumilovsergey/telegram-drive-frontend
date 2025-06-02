@@ -11,5 +11,5 @@ cloud-drive-app/
     ├── pdf.png
     ├── picture.png
     ├── doc.png
-    ├── default.png      ← (fallback if you open a filetype not in dictionary.json)
-    └── … (any other icons you need)
+    ├── default.png      
+ 

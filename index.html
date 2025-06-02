@@ -3,16 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cloud Drive</title>
+  <title>Telegram Drive</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="app">
-    <header>
-      <h1>Cloud Drive</h1>
-    </header>
-    <!-- Our “tree” container; JS will build a nested list inside this -->
+
+    <nav id="top-nav">
+      <button id="home-btn">🏠 Home</button>
+      <h1>☁️</h1>
+      <button id="info-btn">ℹ️ Info</button>
+    </nav>
+
     <main id="drive-root" class="content-container"></main>
+
+    <div id="info-page" class="content-container hidden">
+      <button id="info-close-btn">Back</button>
+      <div class="info-content">
+        <h2>About This App</h2>
+        <p>
+          This is a simple mobile‐friendly “cloud drive” interface built with vanilla HTML, CSS, and JS.<br/><br/>
+          • Tap a folder to expand/collapse its contents. <br/>
+          • Tap the circle selector on the right to select one item (it turns blue). <br/>
+          • The bottom action bar appears with relevant buttons (Copy, Paste, Delete, etc.). <br/>
+          • Home resets the tree; Info shows this screen. <br/><br/>
+          Feel free to customize further!
+        </p>
+      </div>
+    </div>
+
+    <nav id="bottom-menu" class="hidden"></nav>
   </div>
 
   <script src="app.js"></script>

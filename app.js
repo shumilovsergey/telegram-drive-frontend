@@ -1,40 +1,21 @@
-// ------------------------------
-// 1) Configuration & State
-// ------------------------------
+
 const API_HOST = "http://45.131.41.34:9000";
 const USER = {
   user_id: "7777",
   token:   "my_secret_token"
 };
 
-// Tracks extension (or “folder”) → icon filename, e.g. { pdf: "pdf.png", folder: "folder.png", … }
+
 let iconMap = {};
-
-// In-memory nested object representing the folder tree.
-// Example format:
-// {
-//   "documents": {
-//     "mama docs": {
-//       files: [ { name:"test.txt", file_id:"frjijr4895" } ]
-//     },
-//     "papa": {
-//       files: [ { name:"photo.png", file_id:"kofrk45" } ]
-//     },
-//     files: [ { name:"rootfile.doc", file_id:"xyz123" } ]
-//   },
-//   files: [ { name:"readme.txt", file_id:"abc999" } ]
-// }
 let fileTree = {};
-
-// A Set of “expanded” folder paths. Each folder’s path is stored as a string "parent/child/…".  
-// If present in this Set, that folder is currently expanded.
 const expandedPaths = new Set();
-
-// Holds the last‐“copied” file object for Paste operations:
-let copiedFileObj = null;
+let cutFileObj = null;
+let cutParentPath = null;
+let selectedContext = null;
+let selectedElement = null;
 
 // ------------------------------
-// 2) On page load: fetch icons + user data
+// 2) On page load: fetch dictionary + user_data
 // ------------------------------
 window.addEventListener("DOMContentLoaded", async () => {
   const rootEl = document.getElementById("drive-root");
@@ -60,8 +41,25 @@ window.addEventListener("DOMContentLoaded", async () => {
     // 2.3) Build in-memory folder tree
     fileTree = buildTree(files);
 
-    // 2.4) Render entire tree at root
-    renderTree(fileTree, [], rootEl);
+
+    const rootEl = document.getElementById("drive-root");
+    if (!fileTree || Object.keys(fileTree).length === 0) {
+      rootEl.innerHTML =
+        '<p style="color:#fff; text-align:center; margin-top:2rem;">У тебя еще нет загруженных файлов! Попробоуй скиннуть файл в диалог с ботом и он появится тут :^) </p>';
+    } else {
+      renderTree(fileTree, [], rootEl);
+    }
+
+    // 2.5) Hook up top‐nav buttons
+    document.getElementById("home-btn").addEventListener("click", () => {
+      handleHome();
+    });
+    document.getElementById("info-btn").addEventListener("click", () => {
+      showInfoPage();
+    });
+    document.getElementById("info-close-btn").addEventListener("click", () => {
+      hideInfoPage();
+    });
   } catch (err) {
     console.error("Error loading data or dictionary:", err);
     rootEl.innerHTML = `
@@ -76,12 +74,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 // ------------------------------
 function buildTree(files) {
   const tree = {};
-
   files.forEach(file => {
     // file.file_path might be "/documents/mama docs/test.txt"
     const parts = file.file_path.replace(/^\/+/, "").split("/").filter(Boolean);
     let node = tree;
-
     parts.forEach((part, idx) => {
       const isLeaf = idx === parts.length - 1;
       if (isLeaf) {
@@ -96,27 +92,26 @@ function buildTree(files) {
       }
     });
   });
-
   return tree;
 }
 
 // ------------------------------
 // 4) renderTree(treeNode, pathArray, container)
-//    Recursively builds a nested “tree” inside `container`
+//    Recursively build the expandable/collapsible tree.
 // ------------------------------
 function renderTree(treeNode, pathArray, container) {
-  container.innerHTML = ""; // Clear existing children
+  container.innerHTML = ""; // Clear out previous content
 
   // 4.1) Render all subfolders at this level
   Object.keys(treeNode)
     .filter(key => key !== "files")
     .sort((a, b) => a.localeCompare(b))
     .forEach(folderName => {
-      // Build the full path string for this folder:
+      // Build the full folder path array and string
       const folderPathArr = [...pathArray, folderName];
       const pathKey = folderPathArr.join("/");
 
-      // Create the folder “row”
+      // 4.1.a) Create the folder row
       const folderEl = document.createElement("div");
       folderEl.className = "folder";
 
@@ -133,79 +128,42 @@ function renderTree(treeNode, pathArray, container) {
       txt.textContent = folderName;
       folderEl.appendChild(txt);
 
-      // 4.1.a) Three‐dot menu button (⋮)
-      const menuBtn = document.createElement("span");
-      menuBtn.className = "menu-btn";
-      menuBtn.innerHTML = "&#x22EE;"; // Vertical ellipsis
-      folderEl.appendChild(menuBtn);
+      // 4.1.b) Create the “selector” circle on the right
+      const selectBtn = document.createElement("span");
+      selectBtn.className = "select-btn";
+      folderEl.appendChild(selectBtn);
 
-      // 4.1.b) Build pop‐up menu for this folder
-      const popup = document.createElement("div");
-      popup.className = "menu-popup";
-
-      // — “Paste” (enabled only if we have copiedFileObj non‐null)
-      const pasteItem = document.createElement("div");
-      pasteItem.className = "menu-item";
-      pasteItem.textContent = "Paste";
-      if (!copiedFileObj) {
-        pasteItem.classList.add("disabled");
-      } else {
-        pasteItem.addEventListener("click", e => {
-          e.stopPropagation();
-          handlePasteToFolder(folderPathArr);
-          popup.style.display = "none";
-        });
-      }
-      popup.appendChild(pasteItem);
-
-      // — “Rename”
-      const renameItem = document.createElement("div");
-      renameItem.className = "menu-item";
-      renameItem.textContent = "Rename";
-      renameItem.addEventListener("click", e => {
-        e.stopPropagation();
-        handleRenameFolder(folderPathArr);
-        popup.style.display = "none";
-      });
-      popup.appendChild(renameItem);
-
-      // — “Delete”
-      const deleteItem = document.createElement("div");
-      deleteItem.className = "menu-item";
-      deleteItem.textContent = "Delete";
-      deleteItem.addEventListener("click", e => {
-        e.stopPropagation();
-        handleDeleteFolder(folderPathArr);
-        popup.style.display = "none";
-      });
-      popup.appendChild(deleteItem);
-
-      folderEl.appendChild(popup);
-
-      // 4.1.c) Toggle expansion/collapse on folder row click
+      // 4.1.c) Clicking the folder row toggles expansion/collapse,
+      //         and also deselects any currently-selected item.
       folderEl.addEventListener("click", () => {
-        // If user clicked the ⋮ menu, stopPropagation happens inside that handler,
-        // so this click only fires when clicking the row background or name.
+        deselectCurrent();
         if (expandedPaths.has(pathKey)) {
           expandedPaths.delete(pathKey);
         } else {
           expandedPaths.add(pathKey);
         }
-        // Re-render the entire tree from root
         const rootEl = document.getElementById("drive-root");
         renderTree(fileTree, [], rootEl);
       });
 
-      // 4.1.d) Toggle popup menu when clicking ⋮ (and stopPropagation)
-      menuBtn.addEventListener("click", event => {
-        event.stopPropagation();
-        closeAllMenus();
-        popup.style.display = "flex";
+      // 4.1.d) Clicking the selector circle selects/deselects this folder
+      selectBtn.addEventListener("click", event => {
+        event.stopPropagation(); // Prevent triggering the folderEl click
+        handleSelectFolder(folderPathArr, folderEl);
       });
+
+      // 4.1.e) If this folder is marked as “selected,” add the class
+      if (
+        selectedContext &&
+        selectedContext.type === "folder" &&
+        selectedContext.folderPath.join("/") === pathKey
+      ) {
+        folderEl.classList.add("selected");
+      }
 
       container.appendChild(folderEl);
 
-      // 4.1.e) If this folder is expanded, show its children inside a nested div
+      // 4.1.f) If expanded, render its children inside a nested div
       if (expandedPaths.has(pathKey)) {
         const childContainer = document.createElement("div");
         childContainer.className = "tree-children";
@@ -214,7 +172,7 @@ function renderTree(treeNode, pathArray, container) {
       }
     });
 
-  // 4.2) Render files that live in this `treeNode`
+  // 4.2) Render files at this level (if any)
   if (Array.isArray(treeNode.files)) {
     treeNode.files
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -234,146 +192,255 @@ function renderTree(treeNode, pathArray, container) {
         fileEl.appendChild(img);
 
         const txt = document.createElement("span");
-        txt.textContent = `${ext.toUpperCase()}: ${fileObj.name}`;
+        txt.textContent = fileObj.name;
         fileEl.appendChild(txt);
 
-        // 4.2.a) Three‐dot menu for file
-        const menuBtn = document.createElement("span");
-        menuBtn.className = "menu-btn";
-        menuBtn.innerHTML = "&#x22EE;"; // “⋮”
-        fileEl.appendChild(menuBtn);
+        // 4.2.a) Create the “selector” circle on the right
+        const selectBtn = document.createElement("span");
+        selectBtn.className = "select-btn";
+        fileEl.appendChild(selectBtn);
 
-        // 4.2.b) Build file’s pop‐up menu
-        const popup = document.createElement("div");
-        popup.className = "menu-popup";
-
-        // — “Copy”
-        const copyItem = document.createElement("div");
-        copyItem.className = "menu-item";
-        copyItem.textContent = "Copy";
-        copyItem.addEventListener("click", e => {
-          e.stopPropagation();
-          handleCopy(fileObj);
-          popup.style.display = "none";
-        });
-        popup.appendChild(copyItem);
-
-        // — “Paste” (always disabled for files)
-        const pasteItem = document.createElement("div");
-        pasteItem.className = "menu-item disabled";
-        pasteItem.textContent = "Paste";
-        popup.appendChild(pasteItem);
-
-        // — “Download”
-        const downloadItem = document.createElement("div");
-        downloadItem.className = "menu-item";
-        downloadItem.textContent = "Download";
-        downloadItem.addEventListener("click", e => {
-          e.stopPropagation();
-          handleDownload(fileObj);
-          popup.style.display = "none";
-        });
-        popup.appendChild(downloadItem);
-
-        // — “Delete”
-        const deleteItem = document.createElement("div");
-        deleteItem.className = "menu-item";
-        deleteItem.textContent = "Delete";
-        deleteItem.addEventListener("click", e => {
-          e.stopPropagation();
-          handleDeleteFile(fileObj, pathArray);
-          popup.style.display = "none";
-        });
-        popup.appendChild(deleteItem);
-
-        fileEl.appendChild(popup);
-
-        // 4.2.c) Toggle file popup on ⋮ click
-        menuBtn.addEventListener("click", event => {
-          event.stopPropagation();
-          closeAllMenus();
-          popup.style.display = "flex";
-        });
-
-        // 4.2.d) Clicking the file row (outside the menu) closes all menus
+        // 4.2.b) Clicking the file row deselects any selected item
         fileEl.addEventListener("click", () => {
-          closeAllMenus();
+          deselectCurrent();
         });
+
+        // 4.2.c) Clicking the selector circle selects/deselects this file
+        selectBtn.addEventListener("click", event => {
+          event.stopPropagation();
+          handleSelectFile(fileObj, pathArray, fileEl);
+        });
+
+        // 4.2.d) If this file is “selected,” add the class
+        if (
+          selectedContext &&
+          selectedContext.type === "file" &&
+          selectedContext.fileObj.file_id === fileObj.file_id
+        ) {
+          fileEl.classList.add("selected");
+        }
 
         container.appendChild(fileEl);
       });
   }
-
-  // 4.3) Clicking anywhere else closes all open menus
-  document.addEventListener("click", closeAllMenus);
 }
 
 // ------------------------------
-// 5) closeAllMenus(): hides every .menu-popup
+// 5) deselectCurrent(): clears any selected row & hides bottom menu
 // ------------------------------
-function closeAllMenus() {
-  document.querySelectorAll(".menu-popup").forEach(p => {
-    p.style.display = "none";
-  });
+function deselectCurrent() {
+  if (selectedElement) {
+    selectedElement.classList.remove("selected");
+    selectedElement = null;
+    selectedContext = null;
+    hideBottomMenu();
+  }
 }
 
 // ------------------------------
-// 6) handleCopy(fileObj)
+// 6) handleSelectFolder(folderPathArr, rowEl)
 // ------------------------------
-function handleCopy(fileObj) {
-  copiedFileObj = fileObj;
-  // Also try to put filename into OS clipboard
-  navigator.clipboard
-    .writeText(fileObj.name)
-    .catch(() => {
-      console.warn("OS clipboard write failed, but internal copy succeeded.");
-    });
-  alert(`Copied: ${fileObj.name}`);
+function handleSelectFolder(folderPathArr, rowEl) {
+  const pathKey = folderPathArr.join("/");
+
+  // If already selected, deselect
+  if (
+    selectedContext &&
+    selectedContext.type === "folder" &&
+    selectedContext.folderPath.join("/") === pathKey
+  ) {
+    deselectCurrent();
+    return;
+  }
+
+  // Otherwise, switch selection
+  deselectCurrent();
+  rowEl.classList.add("selected");
+  selectedElement = rowEl;
+  selectedContext = {
+    type: "folder",
+    folderPath: folderPathArr.slice()
+  };
+  showBottomMenu();
 }
 
 // ------------------------------
-// 7) handlePasteToFolder(folderPathArr)
-//    Duplicate copiedFileObj into the folder at folderPathArr
+// 7) handleSelectFile(fileObj, parentPathArr, rowEl)
+// ------------------------------
+function handleSelectFile(fileObj, parentPathArr, rowEl) {
+  // If already selected, deselect
+  if (
+    selectedContext &&
+    selectedContext.type === "file" &&
+    selectedContext.fileObj.file_id === fileObj.file_id
+  ) {
+    deselectCurrent();
+    return;
+  }
+
+  // Otherwise, switch selection
+  deselectCurrent();
+  rowEl.classList.add("selected");
+  selectedElement = rowEl;
+  selectedContext = {
+    type: "file",
+    fileObj: { ...fileObj },
+    parentPath: parentPathArr.slice()
+  };
+  showBottomMenu();
+}
+
+// ------------------------------
+// 8) showBottomMenu(): renders bottom nav buttons based on selectedContext
+// ------------------------------
+function showBottomMenu() {
+  const bottomNav = document.getElementById("bottom-menu");
+  bottomNav.innerHTML = ""; // Clear old buttons
+  bottomNav.classList.remove("hidden");
+
+  if (!selectedContext) return;
+
+  // Helper to create a <button> for the bottom menu
+  function makeButton(label, onClick, disabled = false) {
+    const btn = document.createElement("button");
+    btn.textContent = label;
+    if (disabled) {
+      btn.classList.add("disabled");
+    } else {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        onClick();
+        hideBottomMenu();
+      });
+    }
+    return btn;
+  }
+
+  if (selectedContext.type === "file") {
+    const { fileObj, parentPath } = selectedContext;
+
+    // ⬇️ Download
+    bottomNav.appendChild(
+      makeButton("⬇️ Download", () => handleDownload(fileObj), false)
+    );
+
+    // ✏️ Rename (only name, keep extension)
+    bottomNav.appendChild(
+      makeButton("✏️ Rename", () => handleRenameFile(fileObj, parentPath), false)
+    );
+
+    // ✂️ Cut
+    bottomNav.appendChild(
+      makeButton("✂️ Cut", () => handleCut(fileObj, parentPath), false)
+    );
+
+    // 🗑️ Delete
+    bottomNav.appendChild(
+      makeButton("🗑️ Delete", () => handleDeleteFile(fileObj, parentPath), false)
+    );
+  }
+  else if (selectedContext.type === "folder") {
+    const { folderPath } = selectedContext;
+
+    // ➕ Add
+    bottomNav.appendChild(
+      makeButton("➕ Add", () => handleNewFolder(folderPath), false)
+    );
+
+    // ✏️ Rename
+    bottomNav.appendChild(
+      makeButton("✏️ Rename", () => handleRenameFolder(folderPath), false)
+    );
+
+    // 📋 Paste (only if something is cut)
+    bottomNav.appendChild(
+      makeButton(
+        "📋 Paste",
+        () => handlePasteToFolder(folderPath),
+        cutFileObj === null
+      )
+    );
+
+    // 🗑️ Delete (only if empty)
+    bottomNav.appendChild(
+      makeButton("🗑️ Delete", () => handleDeleteFolder(folderPath), false)
+    );
+  }
+}
+
+// ------------------------------
+// 9) hideBottomMenu()
+// ------------------------------
+function hideBottomMenu() {
+  const bottomNav = document.getElementById("bottom-menu");
+  bottomNav.classList.add("hidden");
+}
+
+// ------------------------------
+// 10) handleCut(fileObj, parentPathArr)
+// ------------------------------
+function handleCut(fileObj, parentPathArr) {
+  cutFileObj = fileObj;
+  cutParentPath = parentPathArr.slice();
+  alert(`Cut: ${fileObj.name}`);
+  // Keep the file visible until pasted; just store it for later move
+}
+
+// ------------------------------
+// 11) handlePasteToFolder(folderPathArr)
 // ------------------------------
 async function handlePasteToFolder(folderPathArr) {
-  if (!copiedFileObj) {
+  if (!cutFileObj) {
     alert("Nothing to paste.");
     return;
   }
 
-  // 7.1) Locate the target folder node
+  // 11.1) Remove from old folder
+  const oldParentNode = getNodeFromPath(fileTree, cutParentPath);
+  const idx = oldParentNode.files.findIndex(f => f.file_id === cutFileObj.file_id);
+  if (idx !== -1) {
+    oldParentNode.files.splice(idx, 1);
+  }
+
+  // 11.2) Add to new folder
   const targetNode = getNodeFromPath(fileTree, folderPathArr);
   if (!targetNode.files) targetNode.files = [];
+  targetNode.files.push({
+    name: cutFileObj.name,
+    file_id: cutFileObj.file_id
+  });
 
-  // 7.2) Generate a brand‐new file_id
-  const newId = "id_" + Date.now() + "_" + Math.floor(Math.random() * 1e4);
-  const newFile = {
-    name: copiedFileObj.name,
-    file_id: newId
-  };
-  targetNode.files.push(newFile);
+  // 11.3) Clear cut state
+  cutFileObj = null;
+  cutParentPath = null;
 
-  // 7.3) Re-render entire tree
+  // 11.4) Re-render entire tree
   const rootEl = document.getElementById("drive-root");
   renderTree(fileTree, [], rootEl);
 
-  // 7.4) Sync with backend
+  // 11.5) Sync with backend
   await updateBackend();
-  alert(`Pasted "${copiedFileObj.name}" into "${folderPathArr.join("/")}".`);
+  alert(`Moved file to "${folderPathArr.join("/")}".`);
 }
 
 // ------------------------------
-// 8) handleDeleteFile(fileObj, parentPathArr)
+// 12) handleDeleteFile(fileObj, parentPathArr)
 // ------------------------------
 async function handleDeleteFile(fileObj, parentPathArr) {
   const parentNode = getNodeFromPath(fileTree, parentPathArr);
   const idx = parentNode.files.findIndex(f => f.file_id === fileObj.file_id);
   if (idx === -1) return;
 
-  if (!confirm(`Delete file "${fileObj.name}"?`)) {
+  if (!confirm(`Are you sure you want to delete "${fileObj.name}"?`)) {
     return;
   }
   parentNode.files.splice(idx, 1);
+
+  // If we had this file cut, clear that too
+  if (cutFileObj && cutFileObj.file_id === fileObj.file_id) {
+    cutFileObj = null;
+    cutParentPath = null;
+  }
 
   // Re-render
   const rootEl = document.getElementById("drive-root");
@@ -385,16 +452,15 @@ async function handleDeleteFile(fileObj, parentPathArr) {
 }
 
 // ------------------------------
-// 9) handleDeleteFolder(folderPathArr)
-//    Only if the folder is empty; otherwise alert.
+// 13) handleDeleteFolder(folderPathArr)
 // ------------------------------
 async function handleDeleteFolder(folderPathArr) {
-  // folderPathArr = ["documents","papa"] for example
   const parentPath = folderPathArr.slice(0, -1);
   const folderName = folderPathArr[folderPathArr.length - 1];
   const parentNode = getNodeFromPath(fileTree, parentPath);
   const folderNode = parentNode[folderName];
 
+  // Only delete if truly empty
   const hasSubfolders = Object
     .keys(folderNode)
     .filter(k => k !== "files")
@@ -410,8 +476,6 @@ async function handleDeleteFolder(folderPathArr) {
   }
 
   delete parentNode[folderName];
-
-  // Also remove from expandedPaths if it was expanded
   const pathKey = folderPathArr.join("/");
   expandedPaths.delete(pathKey);
 
@@ -425,7 +489,7 @@ async function handleDeleteFolder(folderPathArr) {
 }
 
 // ------------------------------
-// 10) handleRenameFolder(folderPathArr)
+// 14) handleRenameFolder(folderPathArr)
 // ------------------------------
 async function handleRenameFolder(folderPathArr) {
   const parentPath = folderPathArr.slice(0, -1);
@@ -445,19 +509,16 @@ async function handleRenameFolder(folderPathArr) {
   parentNode[newName] = parentNode[oldName];
   delete parentNode[oldName];
 
-  // Update expandedPaths: any path that started with oldName/… should be updated
+  // Update expandedPaths so any “oldName/…” keys get replaced
   const oldKeyPrefix = [...parentPath, oldName].join("/") + "/";
   const newKeyPrefix = [...parentPath, newName].join("/") + "/";
   const updatedSet = new Set();
   expandedPaths.forEach(key => {
     if (key === oldKeyPrefix.slice(0, -1)) {
-      // The folder itself was expanded; replace
       updatedSet.add(newKeyPrefix.slice(0, -1));
     } else if (key.startsWith(oldKeyPrefix)) {
-      // Some child under it was expanded; update prefix
       updatedSet.add(key.replace(oldKeyPrefix, newKeyPrefix));
     } else {
-      // Unrelated path; keep as is
       updatedSet.add(key);
     }
   });
@@ -474,7 +535,68 @@ async function handleRenameFolder(folderPathArr) {
 }
 
 // ------------------------------
-// 11) handleDownload(fileObj)
+// 15) handleNewFolder(folderPathArr)
+//     Creates a new subfolder named "new_folder" (or "new_folder_1", etc.)
+// ------------------------------
+async function handleNewFolder(folderPathArr) {
+  const parentNode = getNodeFromPath(fileTree, folderPathArr);
+
+  // Find a unique name ("new_folder", "new_folder_1", etc.)
+  let base = "new_folder";
+  let candidate = base;
+  let counter = 1;
+  while (parentNode[candidate]) {
+    candidate = `${base}_${counter++}`;
+  }
+
+  // Create the subfolder
+  parentNode[candidate] = {};
+
+  // Ensure parent is expanded
+  const pathKey = folderPathArr.join("/");
+  expandedPaths.add(pathKey);
+
+  // Re-render
+  const rootEl = document.getElementById("drive-root");
+  renderTree(fileTree, [], rootEl);
+
+  // Sync
+  await updateBackend();
+  alert(`Created new folder "${candidate}".`);
+}
+
+// ------------------------------
+// 16) handleRenameFile(fileObj, parentPathArr)
+//     Prompts for a new filename (keeps extension fixed), updates tree & backend.
+// ------------------------------
+async function handleRenameFile(fileObj, parentPathArr) {
+  const oldName = fileObj.name; // e.g. "document.pdf"
+  const parts = oldName.split(".");
+  const ext = parts.length > 1 ? parts.pop() : "";
+  const base = parts.join(".");
+  const newBase = prompt("Enter new filename (without extension):", base);
+  if (!newBase || newBase.trim() === "" || newBase === base) {
+    return; // no change
+  }
+  const newName = ext ? `${newBase}.${ext}` : newBase;
+
+  // Update in-memory object
+  const parentNode = getNodeFromPath(fileTree, parentPathArr);
+  const idx = parentNode.files.findIndex(f => f.file_id === fileObj.file_id);
+  if (idx === -1) return;
+  parentNode.files[idx].name = newName;
+
+  // Re-render
+  const rootEl = document.getElementById("drive-root");
+  renderTree(fileTree, [], rootEl);
+
+  // Sync
+  await updateBackend();
+  alert(`Renamed file "${oldName}" → "${newName}".`);
+}
+
+// ------------------------------
+// 17) handleDownload(fileObj)
 // ------------------------------
 async function handleDownload(fileObj) {
   try {
@@ -489,15 +611,6 @@ async function handleDownload(fileObj) {
     if (!resp.ok) {
       throw new Error(`Status ${resp.status}`);
     }
-    // If your backend returns a Blob, you can do something like:
-    // const blob = await resp.blob();
-    // const url = URL.createObjectURL(blob);
-    // const a = document.createElement("a");
-    // a.href = url;
-    // a.download = fileObj.name;
-    // a.click();
-    // URL.revokeObjectURL(url);
-
     alert(`Download request sent for "${fileObj.name}".`);
   } catch (err) {
     console.error("Download error:", err);
@@ -506,10 +619,9 @@ async function handleDownload(fileObj) {
 }
 
 // ------------------------------
-// 12) updateBackend(): flatten tree and POST /up_data
+// 18) updateBackend(): flatten tree & POST to /up_data
 // ------------------------------
 async function updateBackend() {
-  // Build newUserData = [ { file_id, file_type, file_path }, … ]
   const newUserData = [];
   function recurse(node, pathSoFar) {
     if (node.files) {
@@ -545,8 +657,6 @@ async function updateBackend() {
     if (!resp.ok) {
       throw new Error(`Status ${resp.status}`);
     }
-    // Optionally: const result = await resp.json();
-    // console.log("Up_data response:", result);
   } catch (err) {
     console.error("Error updating backend (/up_data):", err);
     alert("Failed to synchronize changes with server.");
@@ -554,7 +664,8 @@ async function updateBackend() {
 }
 
 // ------------------------------
-// 13) getNodeFromPath(tree, pathArr) → returns the subtree at that path
+// 19) getNodeFromPath(tree, pathArr)
+//     Returns the subtree at the given path.
 // ------------------------------
 function getNodeFromPath(tree, pathArr) {
   let node = tree;
@@ -562,4 +673,29 @@ function getNodeFromPath(tree, pathArr) {
     node = node[segment];
   }
   return node;
+}
+
+// ------------------------------
+// 20) handleHome()
+//     Collapse everything, clear selection, hide info page & bottom menu, re-render root.
+// ------------------------------
+function handleHome() {
+  expandedPaths.clear();
+  deselectCurrent();
+  hideInfoPage();
+  const rootEl = document.getElementById("drive-root");
+  renderTree(fileTree, [], rootEl);
+}
+
+// ------------------------------
+// 21) showInfoPage() / hideInfoPage()
+// ------------------------------
+function showInfoPage() {
+  document.getElementById("drive-root").classList.add("hidden");
+  hideBottomMenu();
+  document.getElementById("info-page").classList.remove("hidden");
+}
+function hideInfoPage() {
+  document.getElementById("info-page").classList.add("hidden");
+  document.getElementById("drive-root").classList.remove("hidden");
 }
