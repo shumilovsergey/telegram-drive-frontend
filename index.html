@@ -2,39 +2,118 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- telegram full screen -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+
   <title>Telegram Drive</title>
   <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="app">
 
     <nav id="top-nav">
-      <button id="home-btn">🏠 Home</button>
+      <button id="home-btn">🏠 Домой</button>
       <h1>☁️</h1>
-      <button id="info-btn">ℹ️ Info</button>
+      <button id="info-btn">ℹ️ Инфо</button>
     </nav>
 
     <main id="drive-root" class="content-container"></main>
 
     <div id="info-page" class="content-container hidden">
-      <button id="info-close-btn">Back</button>
-      <div class="info-content">
-        <h2>About This App</h2>
-        <p>
-          This is a simple mobile‐friendly “cloud drive” interface built with vanilla HTML, CSS, and JS.<br/><br/>
-          • Tap a folder to expand/collapse its contents. <br/>
-          • Tap the circle selector on the right to select one item (it turns blue). <br/>
-          • The bottom action bar appears with relevant buttons (Copy, Paste, Delete, etc.). <br/>
-          • Home resets the tree; Info shows this screen. <br/><br/>
-          Feel free to customize further!
+      <!-- “Back” button at top of Info page -->
+      <button id="info-close-btn">← Назад</button>
+
+      <div class="info-content" style="margin-top: 1rem;">
+        <!-- Header -->
+        <h2 style="text-align: center; margin-bottom: 1rem; color: #fff;">
+          О приложении:
+        </h2>
+
+        <!-- Descriptive text -->
+        <p style="color: #fff; line-height: 1.5; margin-bottom: 1.5rem;">
+          Это просто облачный диск. Загружай файлы, храни, делись — всё работает быстро и просто.        
+          <br/><br/>
+          Если вы хотите узнать больше обо мне или моих проектах — welcome:
         </p>
+
+        <!-- Buttons container -->
+        <div class="info-buttons" style="display: flex; flex-direction: column; gap: 0.75rem; align-items: flex-start;">
+          <!-- Website button -->
+          <button id="website-btn"
+                  style="
+                    background: rgba(255,255,255,0.15);
+                    backdrop-filter: blur(6px);
+                    border: none;
+                    border-radius: 0.75rem;
+                    padding: 0.75rem 1rem;
+                    font-size: 1rem;
+                    color: #fff;
+                    display: flex;
+                    align-items: center;
+                    cursor: pointer;
+                  "
+                  onmouseover="this.style.background='rgba(255,255,255,0.25)';"
+                  onmouseout="this.style.background='rgba(255,255,255,0.15)';">
+            <span style="font-size: 1.2rem; margin-right: 0.5rem;">🌐</span>
+            Сайт
+          </button>
+
+          <!-- Telegram button -->
+          <button id="telegram-btn"
+                  style="
+                    background: rgba(255,255,255,0.15);
+                    backdrop-filter: blur(6px);
+                    border: none;
+                    border-radius: 0.75rem;
+                    padding: 0.75rem 1rem;
+                    font-size: 1rem;
+                    color: #fff;
+                    display: flex;
+                    align-items: center;
+                    cursor: pointer;
+                  "
+                  onmouseover="this.style.background='rgba(255,255,255,0.25)';"
+                  onmouseout="this.style.background='rgba(255,255,255,0.15)';">
+            <span style="font-size: 1.2rem; margin-right: 0.5rem;">💬</span>
+            Telegram
+          </button>
+
+          <!-- Email button -->
+          <button id="email-btn"
+                  style="
+                    background: rgba(255,255,255,0.15);
+                    backdrop-filter: blur(6px);
+                    border: none;
+                    border-radius: 0.75rem;
+                    padding: 0.75rem 1rem;
+                    font-size: 1rem;
+                    color: #fff;
+                    display: flex;
+                    align-items: center;
+                    cursor: pointer;
+                  "
+                  onmouseover="this.style.background='rgba(255,255,255,0.25)';"
+                  onmouseout="this.style.background='rgba(255,255,255,0.15)';">
+            <span style="font-size: 1.2rem; margin-right: 0.5rem;">✉️</span>
+            Почта
+          </button>
+        </div>
       </div>
     </div>
+
 
     <nav id="bottom-menu" class="hidden"></nav>
   </div>
 
+  <!-- telegram staff -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+  </script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -321,22 +321,22 @@ function showBottomMenu() {
 
     // ⬇️ Download
     bottomNav.appendChild(
-      makeButton("⬇️ Download", () => handleDownload(fileObj), false)
+      makeButton("⬇️ Скачать", () => handleDownload(fileObj), false)
     );
 
     // ✏️ Rename (only name, keep extension)
     bottomNav.appendChild(
-      makeButton("✏️ Rename", () => handleRenameFile(fileObj, parentPath), false)
+      makeButton("✏️ Имя", () => handleRenameFile(fileObj, parentPath), false)
     );
 
     // ✂️ Cut
     bottomNav.appendChild(
-      makeButton("✂️ Cut", () => handleCut(fileObj, parentPath), false)
+      makeButton("✂️ Вырезать", () => handleCut(fileObj, parentPath), false)
     );
 
     // 🗑️ Delete
     bottomNav.appendChild(
-      makeButton("🗑️ Delete", () => handleDeleteFile(fileObj, parentPath), false)
+      makeButton("🗑️", () => handleDeleteFile(fileObj, parentPath), false)
     );
   }
   else if (selectedContext.type === "folder") {
@@ -344,18 +344,18 @@ function showBottomMenu() {
 
     // ➕ Add
     bottomNav.appendChild(
-      makeButton("➕ Add", () => handleNewFolder(folderPath), false)
+      makeButton("➕ Папку", () => handleNewFolder(folderPath), false)
     );
 
     // ✏️ Rename
     bottomNav.appendChild(
-      makeButton("✏️ Rename", () => handleRenameFolder(folderPath), false)
+      makeButton("✏️ Имя", () => handleRenameFolder(folderPath), false)
     );
 
     // 📋 Paste (only if something is cut)
     bottomNav.appendChild(
       makeButton(
-        "📋 Paste",
+        "📋 Вставить",
         () => handlePasteToFolder(folderPath),
         cutFileObj === null
       )
@@ -363,7 +363,7 @@ function showBottomMenu() {
 
     // 🗑️ Delete (only if empty)
     bottomNav.appendChild(
-      makeButton("🗑️ Delete", () => handleDeleteFolder(folderPath), false)
+      makeButton("🗑️", () => handleDeleteFolder(folderPath), false)
     );
   }
 }
@@ -382,7 +382,8 @@ function hideBottomMenu() {
 function handleCut(fileObj, parentPathArr) {
   cutFileObj = fileObj;
   cutParentPath = parentPathArr.slice();
-  alert(`Cut: ${fileObj.name}`);
+
+  // alert(`Cut: ${fileObj.name}`);
   // Keep the file visible until pasted; just store it for later move
 }
 
@@ -592,7 +593,7 @@ async function handleRenameFile(fileObj, parentPathArr) {
 
   // Sync
   await updateBackend();
-  alert(`Renamed file "${oldName}" → "${newName}".`);
+  // alert(`Renamed file "${oldName}" → "${newName}".`);
 }
 
 // ------------------------------
@@ -699,3 +700,36 @@ function hideInfoPage() {
   document.getElementById("info-page").classList.add("hidden");
   document.getElementById("drive-root").classList.remove("hidden");
 }
+
+
+// INFO 
+
+// After your existing:
+// document.getElementById("info-close-btn").addEventListener("click", () => { hideInfoPage(); });
+
+// ──────────────────────────────────────────────────────────────
+// 2.6) Hook up the three new Info-page buttons
+// ──────────────────────────────────────────────────────────────
+
+// 1) Website: open your site in a new tab
+document.getElementById("website-btn").addEventListener("click", () => {
+  window.open("https://your-website.example.com", "_blank");
+});
+
+// 2) Telegram: open your Telegram link in a new tab
+document.getElementById("telegram-btn").addEventListener("click", () => {
+  window.open("https://t.me/yourTelegramUsername", "_blank");
+});
+
+// 3) E-mail: copy to clipboard & alert
+document.getElementById("email-btn").addEventListener("click", () => {
+  const emailAddress = "youremail@example.com";
+  navigator.clipboard
+    .writeText(emailAddress)
+    .then(() => {
+      alert(`Электронная почта скопирована: ${emailAddress}`);
+    })
+    .catch(() => {
+      alert(`Скопируйте вручную: ${emailAddress}`);
+    });
+});
