@@ -1,5 +1,5 @@
 
-const API_HOST = "tgdrive-backend.sh-development.ru";
+const API_HOST = "https://tgdrive-backend.sh-development.ru/";
 const USER = {
   user_id: "7777",
   token:   "my_secret_token"
@@ -606,6 +606,7 @@ async function handleDownload(fileObj) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: USER.user_id,
+        token: USER.token,
         file_id: fileObj.file_id
       })
     });
