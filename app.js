@@ -1,5 +1,5 @@
 
-const API_HOST = "http://45.131.41.34:9000";
+const API_HOST = "tgdrive-backend.sh-development.ru";
 const USER = {
   user_id: "7777",
   token:   "my_secret_token"
