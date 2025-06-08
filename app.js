@@ -690,11 +690,7 @@ function getNodeFromPath(tree, pathArr) {
 //     Collapse everything, clear selection, hide info page & bottom menu, re-render root.
 // ------------------------------
 function handleHome() {
-  expandedPaths.clear();
-  deselectCurrent();
-  hideInfoPage();
-  const rootEl = document.getElementById("drive-root");
-  renderTree(fileTree, [], rootEl);
+  window.location.reload();
 }
 
 // ------------------------------
