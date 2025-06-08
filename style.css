@@ -137,12 +137,10 @@ body::before {
   margin-right: 0.75rem;
 }
 
-/* ------------------------------------------
-   7) Selected row (folder or file)
-   ------------------------------------------ */
+
 .folder.selected,
 .file.selected {
-  background: rgba(0, 123, 255, 0.25);
+  background: rgba(255, 170, 100, 0.35); 
 }
 
 /* ------------------------------------------
@@ -160,8 +158,8 @@ body::before {
 
 .folder.selected .select-btn,
 .file.selected .select-btn {
-  background: rgba(0, 123, 255, 0.6);
-  border-color: rgba(0, 123, 255, 0.8);
+  background: rgba(255, 170, 100, 0.35);   /* warm peach */
+  border-color: rgba(255, 140, 70, 0.7);   /* richer tone */
 }
 
 /* ------------------------------------------

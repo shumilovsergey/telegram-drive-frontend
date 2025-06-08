@@ -1,9 +1,17 @@
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
 
-const API_HOST = "https://tgdrive-backend.sh-development.ru/";
 const USER = {
-  user_id: "7777",
+  user_id: tg.initDataUnsafe.user.id,
   token:   "my_secret_token"
 };
+
+
+const API_HOST = "https://tgdrive-backend.sh-development.ru/";
+
+
+
 
 
 let iconMap = {};
