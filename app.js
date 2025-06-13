@@ -7,12 +7,12 @@ const USER = {
   token:   "my_secret_token"
 };
 
+// const USER = {
+//   user_id: "7777",
+//   token:   "my_secret_token"
+// };
 
 const API_HOST = "https://tgdrive-backend.sh-development.ru/";
-
-
-
-
 
 let iconMap = {};
 let fileTree = {};
@@ -21,6 +21,54 @@ let cutFileObj = null;
 let cutParentPath = null;
 let selectedContext = null;
 let selectedElement = null;
+
+// NEW NAME
+function showRenameDialog(titleText, defaultValue, onConfirm) {
+  const modal = document.getElementById("rename-modal");
+  const title = document.getElementById("rename-modal-title");
+  const input = document.getElementById("rename-modal-input");
+  const btnOk = document.getElementById("rename-modal-ok");
+  const btnCancel = document.getElementById("rename-modal-cancel");
+
+  title.textContent = titleText;
+  input.value = defaultValue;
+  modal.classList.remove("hidden");
+  input.focus();
+
+  function cleanup() {
+    modal.classList.add("hidden");
+    btnOk.removeEventListener("click", okHandler);
+    btnCancel.removeEventListener("click", cancelHandler);
+  }
+  function okHandler() {
+    const newName = input.value.trim();
+    if (newName) onConfirm(newName);
+    cleanup();
+  }
+  function cancelHandler() {
+    cleanup();
+  }
+
+  btnOk.addEventListener("click", okHandler);
+  btnCancel.addEventListener("click", cancelHandler);
+}
+
+// ────── Simple toast utility ──────
+function showToast(message, duration = 2000) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+  // Force repaint so transition works
+  void toast.offsetWidth;
+  toast.classList.add("visible");
+  // Hide after `duration` ms
+  setTimeout(() => {
+    toast.classList.remove("visible");
+    // Wait for fade-out transition, then hide
+    setTimeout(() => toast.classList.add("hidden"), 300);
+  }, duration);
+}
+
 
 // ------------------------------
 // 2) On page load: fetch dictionary + user_data
@@ -344,7 +392,7 @@ function showBottomMenu() {
 
     // 🗑️ Delete
     bottomNav.appendChild(
-      makeButton("🗑️", () => handleDeleteFile(fileObj, parentPath), false)
+      makeButton("🗑️ Удалить", () => handleDeleteFile(fileObj, parentPath), false)
     );
   }
   else if (selectedContext.type === "folder") {
@@ -371,7 +419,7 @@ function showBottomMenu() {
 
     // 🗑️ Delete (only if empty)
     bottomNav.appendChild(
-      makeButton("🗑️", () => handleDeleteFolder(folderPath), false)
+      makeButton("🗑️ Удалить", () => handleDeleteFolder(folderPath), false)
     );
   }
 }
@@ -391,8 +439,6 @@ function handleCut(fileObj, parentPathArr) {
   cutFileObj = fileObj;
   cutParentPath = parentPathArr.slice();
 
-  // alert(`Cut: ${fileObj.name}`);
-  // Keep the file visible until pasted; just store it for later move
 }
 
 // ------------------------------
@@ -429,7 +475,7 @@ async function handlePasteToFolder(folderPathArr) {
 
   // 11.5) Sync with backend
   await updateBackend();
-  alert(`Moved file to "${folderPathArr.join("/")}".`);
+  showToast(`Файл перемещен "${folderPathArr.join("/")}".`);
 }
 
 // ------------------------------
@@ -457,7 +503,6 @@ async function handleDeleteFile(fileObj, parentPathArr) {
 
   // Sync
   await updateBackend();
-  alert(`Deleted file "${fileObj.name}".`);
 }
 
 // ------------------------------
@@ -477,12 +522,12 @@ async function handleDeleteFolder(folderPathArr) {
   const hasFiles = Array.isArray(folderNode.files) && folderNode.files.length > 0;
 
   if (hasSubfolders || hasFiles) {
-    alert("Cannot delete non‐empty folder.");
+    showToast("Папка должна быть пусой!");
     return;
   }
-  if (!confirm(`Delete empty folder "${folderName}"?`)) {
-    return;
-  }
+  // if (!confirm(`Delete empty folder "${folderName}"?`)) {
+  //   return;
+  // }
 
   delete parentNode[folderName];
   const pathKey = folderPathArr.join("/");
@@ -494,54 +539,60 @@ async function handleDeleteFolder(folderPathArr) {
 
   // Sync
   await updateBackend();
-  alert(`Deleted folder "${folderName}".`);
 }
 
 // ------------------------------
 // 14) handleRenameFolder(folderPathArr)
 // ------------------------------
+
 async function handleRenameFolder(folderPathArr) {
   const parentPath = folderPathArr.slice(0, -1);
-  const oldName = folderPathArr[folderPathArr.length - 1];
+  const oldName    = folderPathArr[folderPathArr.length - 1];
   const parentNode = getNodeFromPath(fileTree, parentPath);
 
-  const newName = prompt("Enter new folder name:", oldName);
-  if (!newName || newName.trim() === "" || newName === oldName) {
-    return; // no change
-  }
-  if (parentNode[newName]) {
-    alert("A folder with that name already exists.");
-    return;
-  }
+  showRenameDialog(
+    /* title */    "Переименовать папку",
+    /* default */  oldName,
+    /* onConfirm => */ async newName => {
+      // If unchanged or empty—do nothing
+      if (!newName || newName.trim() === "" || newName === oldName) return;
 
-  // Move subtree from oldName → newName
-  parentNode[newName] = parentNode[oldName];
-  delete parentNode[oldName];
+      // Name clash?
+      if (parentNode[newName]) {
+        showToast("Папка с таким именем уже существует.");
+        return;
+      }
 
-  // Update expandedPaths so any “oldName/…” keys get replaced
-  const oldKeyPrefix = [...parentPath, oldName].join("/") + "/";
-  const newKeyPrefix = [...parentPath, newName].join("/") + "/";
-  const updatedSet = new Set();
-  expandedPaths.forEach(key => {
-    if (key === oldKeyPrefix.slice(0, -1)) {
-      updatedSet.add(newKeyPrefix.slice(0, -1));
-    } else if (key.startsWith(oldKeyPrefix)) {
-      updatedSet.add(key.replace(oldKeyPrefix, newKeyPrefix));
-    } else {
-      updatedSet.add(key);
+      // Move subtree
+      parentNode[newName] = parentNode[oldName];
+      delete parentNode[oldName];
+
+      // Update expandedPaths
+      const oldKeyPrefix = [...parentPath, oldName].join("/") + "/";
+      const newKeyPrefix = [...parentPath, newName].join("/") + "/";
+      const updatedSet = new Set();
+      expandedPaths.forEach(key => {
+        if (key === oldKeyPrefix.slice(0, -1)) {
+          updatedSet.add(newKeyPrefix.slice(0, -1));
+        } else if (key.startsWith(oldKeyPrefix)) {
+          updatedSet.add(key.replace(oldKeyPrefix, newKeyPrefix));
+        } else {
+          updatedSet.add(key);
+        }
+      });
+      expandedPaths.clear();
+      updatedSet.forEach(k => expandedPaths.add(k));
+
+      // Re-render & sync
+      const rootEl = document.getElementById("drive-root");
+      renderTree(fileTree, [], rootEl);
+      await updateBackend();
     }
-  });
-  expandedPaths.clear();
-  updatedSet.forEach(k => expandedPaths.add(k));
-
-  // Re-render
-  const rootEl = document.getElementById("drive-root");
-  renderTree(fileTree, [], rootEl);
-
-  // Sync
-  await updateBackend();
-  alert(`Renamed folder "${oldName}" → "${newName}".`);
+  );
 }
+
+
+
 
 // ------------------------------
 // 15) handleNewFolder(folderPathArr)
@@ -571,38 +622,46 @@ async function handleNewFolder(folderPathArr) {
 
   // Sync
   await updateBackend();
-  alert(`Created new folder "${candidate}".`);
 }
 
 // ------------------------------
 // 16) handleRenameFile(fileObj, parentPathArr)
 //     Prompts for a new filename (keeps extension fixed), updates tree & backend.
 // ------------------------------
+
 async function handleRenameFile(fileObj, parentPathArr) {
+  // Extract old name and split into base/ext
   const oldName = fileObj.name; // e.g. "document.pdf"
-  const parts = oldName.split(".");
-  const ext = parts.length > 1 ? parts.pop() : "";
-  const base = parts.join(".");
-  const newBase = prompt("Enter new filename (without extension):", base);
-  if (!newBase || newBase.trim() === "" || newBase === base) {
-    return; // no change
-  }
-  const newName = ext ? `${newBase}.${ext}` : newBase;
+  const dotIndex = oldName.lastIndexOf(".");
+  const base = dotIndex > 0 ? oldName.slice(0, dotIndex) : oldName;
+  const ext  = dotIndex > 0 ? oldName.slice(dotIndex) : "";
 
-  // Update in-memory object
-  const parentNode = getNodeFromPath(fileTree, parentPathArr);
-  const idx = parentNode.files.findIndex(f => f.file_id === fileObj.file_id);
-  if (idx === -1) return;
-  parentNode.files[idx].name = newName;
+  // Show the rename dialog, pre-filled with the base name
+  showRenameDialog(
+    /* title     */ "Переименовать файл",
+    /* default   */ base,
+    /* onConfirm */ async newBase => {
+      // Trim and ignore if empty or unchanged
+      if (!newBase || newBase.trim() === "" || newBase === base) return;
 
-  // Re-render
-  const rootEl = document.getElementById("drive-root");
-  renderTree(fileTree, [], rootEl);
+      const newName = newBase + ext; 
 
-  // Sync
-  await updateBackend();
-  // alert(`Renamed file "${oldName}" → "${newName}".`);
+      // Update in-memory tree
+      const parentNode = getNodeFromPath(fileTree, parentPathArr);
+      const idx = parentNode.files.findIndex(f => f.file_id === fileObj.file_id);
+      if (idx === -1) return; // safety
+
+      parentNode.files[idx].name = newName;
+
+      // Re-render & sync
+      const rootEl = document.getElementById("drive-root");
+      renderTree(fileTree, [], rootEl);
+      await updateBackend();
+
+    }
+  );
 }
+
 
 // ------------------------------
 // 17) handleDownload(fileObj)
@@ -621,10 +680,11 @@ async function handleDownload(fileObj) {
     if (!resp.ok) {
       throw new Error(`Status ${resp.status}`);
     }
-    alert(`Download request sent for "${fileObj.name}".`);
+    tg.close();
+
   } catch (err) {
     console.error("Download error:", err);
-    alert("Failed to download. Check console for details.");
+    alert("Что-то пошло не по плану - попробуй позже :^(");
   }
 }
 
@@ -669,7 +729,7 @@ async function updateBackend() {
     }
   } catch (err) {
     console.error("Error updating backend (/up_data):", err);
-    alert("Failed to synchronize changes with server.");
+    showToast("Нет связи с сервером :^( попробуй позже!");
   }
 }
 
@@ -706,35 +766,30 @@ function hideInfoPage() {
   document.getElementById("drive-root").classList.remove("hidden");
 }
 
-
-// INFO 
-
-// After your existing:
-// document.getElementById("info-close-btn").addEventListener("click", () => { hideInfoPage(); });
-
 // ──────────────────────────────────────────────────────────────
 // 2.6) Hook up the three new Info-page buttons
 // ──────────────────────────────────────────────────────────────
 
 // 1) Website: open your site in a new tab
 document.getElementById("website-btn").addEventListener("click", () => {
-  window.open("https://your-website.example.com", "_blank");
+  window.open("https://sh-development.ru/", "_blank");
 });
 
 // 2) Telegram: open your Telegram link in a new tab
 document.getElementById("telegram-btn").addEventListener("click", () => {
-  window.open("https://t.me/yourTelegramUsername", "_blank");
+  window.open("https://t.me/sergey_showmelove", "_blank");
 });
 
-// 3) E-mail: copy to clipboard & alert
+// 3) E-mail: copy to clipboard & toast
 document.getElementById("email-btn").addEventListener("click", () => {
-  const emailAddress = "youremail@example.com";
+  const emailAddress = "wumilovsergey@gmail.com";
   navigator.clipboard
     .writeText(emailAddress)
     .then(() => {
-      alert(`Электронная почта скопирована: ${emailAddress}`);
+      showToast(`Электронная почта скопирована: ${emailAddress}`);
     })
     .catch(() => {
-      alert(`Скопируйте вручную: ${emailAddress}`);
+      showToast(`Скопируйте вручную: ${emailAddress}`);
     });
 });
+

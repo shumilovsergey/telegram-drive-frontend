@@ -54,6 +54,7 @@
                     display: flex;
                     align-items: center;
                     cursor: pointer;
+                    width: 180px;
                   "
                   onmouseover="this.style.background='rgba(255,255,255,0.25)';"
                   onmouseout="this.style.background='rgba(255,255,255,0.15)';">
@@ -74,6 +75,7 @@
                     display: flex;
                     align-items: center;
                     cursor: pointer;
+                    width: 180px;
                   "
                   onmouseover="this.style.background='rgba(255,255,255,0.25)';"
                   onmouseout="this.style.background='rgba(255,255,255,0.15)';">
@@ -94,6 +96,7 @@
                     display: flex;
                     align-items: center;
                     cursor: pointer;
+                    width: 180px;
                   "
                   onmouseover="this.style.background='rgba(255,255,255,0.25)';"
                   onmouseout="this.style.background='rgba(255,255,255,0.15)';">
@@ -104,9 +107,24 @@
       </div>
     </div>
 
-
     <nav id="bottom-menu" class="hidden"></nav>
   </div>
+
+  <!-- popup for rename -->
+  <div id="rename-modal" class="hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <h3 id="rename-modal-title">Переименовать</h3>
+      <input id="rename-modal-input" type="text" />
+      <div class="modal-buttons">
+        <button id="rename-modal-cancel">Отмена</button>
+        <button id="rename-modal-ok">ОК</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
 
   <!-- telegram staff -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>

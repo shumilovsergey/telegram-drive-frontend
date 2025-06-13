@@ -73,10 +73,10 @@ body::before {
 #drive-root,
 #info-page {
   position: absolute;
-  top: 50px;      /* just below top navbar */
+  top: 50px;
   left: 0;
   right: 0;
-  bottom: 60px;   /* leave space for bottom navbar */
+  bottom: calc(env(safe-area-inset-bottom) + 8px + 60px);
   margin: 0.5rem;
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.15);
@@ -169,14 +169,15 @@ body::before {
   margin-left: 1rem;
 }
 
-/* ------------------------------------------
-  10) Bottom Navbar (fixed) 
-  ------------------------------------------ */
+
 #bottom-menu {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+
+  bottom: 12px;
+  left: 0;
+  right: 0;
   height: 60px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255,255,255,0.15);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -233,4 +234,86 @@ body::before {
     font-size: 0.9rem;
     padding: 0.4rem 0.8rem;
   }
+}
+
+/* Rename Modal */
+#rename-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50; /* above everything else */
+}
+#rename-modal.hidden {
+  display: none;
+}
+#rename-modal .modal-overlay {
+  position: absolute;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,0.4);
+}
+#rename-modal .modal-content {
+  position: relative;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  padding: 1rem;
+  border-radius: 0.75rem;
+  width: 80%;
+  max-width: 320px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+#rename-modal h3 {
+  margin: 0 0 0.75rem;
+  text-align: center;
+}
+#rename-modal input {
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  outline: none;
+}
+#rename-modal .modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+#rename-modal .modal-buttons button {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+#rename-modal .modal-buttons button:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ────── Toast notifications ────── */
+.toast {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom) + 80px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  max-width: 80%;
+  text-align: center;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+.toast.visible {
+  opacity: 1;
+}
+.toast.hidden {
+  display: none;
 }
