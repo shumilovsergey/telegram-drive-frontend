@@ -148,8 +148,8 @@ body::before {
    ------------------------------------------ */
 .select-btn {
   margin-left: auto;
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
   border: 2px solid #fff;
   border-radius: 50%;
   box-sizing: border-box;

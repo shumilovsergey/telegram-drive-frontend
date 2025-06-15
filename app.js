@@ -120,7 +120,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     console.error("Error loading data or dictionary:", err);
     rootEl.innerHTML = `
       <p style="color: #fff; text-align: center; margin-top: 2rem;">
-        Could not load files.<br/>Please check network or server.
+        Сервис временно недоступен :^( попробуй позже)
       </p>`;
   }
 });
@@ -140,7 +140,8 @@ function buildTree(files) {
         if (!node.files) node.files = [];
         node.files.push({
           name: part,
-          file_id: file.file_id
+          file_id: file.file_id,
+          file_type: file.file_type
         });
       } else {
         if (!node[part]) node[part] = {};
@@ -486,9 +487,6 @@ async function handleDeleteFile(fileObj, parentPathArr) {
   const idx = parentNode.files.findIndex(f => f.file_id === fileObj.file_id);
   if (idx === -1) return;
 
-  if (!confirm(`Are you sure you want to delete "${fileObj.name}"?`)) {
-    return;
-  }
   parentNode.files.splice(idx, 1);
 
   // If we had this file cut, clear that too
@@ -525,9 +523,6 @@ async function handleDeleteFolder(folderPathArr) {
     showToast("Папка должна быть пусой!");
     return;
   }
-  // if (!confirm(`Delete empty folder "${folderName}"?`)) {
-  //   return;
-  // }
 
   delete parentNode[folderName];
   const pathKey = folderPathArr.join("/");
@@ -674,7 +669,8 @@ async function handleDownload(fileObj) {
       body: JSON.stringify({
         user_id: USER.user_id,
         token: USER.token,
-        file_id: fileObj.file_id
+        file_id: fileObj.file_id,
+        file_type: fileObj.file_type
       })
     });
     if (!resp.ok) {
