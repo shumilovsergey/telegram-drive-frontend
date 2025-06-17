@@ -472,7 +472,8 @@ async function handlePasteToFolder(folderPathArr) {
   if (!targetNode.files) targetNode.files = [];
   targetNode.files.push({
     name: cutFileObj.name,
-    file_id: cutFileObj.file_id
+    file_id: cutFileObj.file_id,
+    file_type: cutFileObj.file_type
   });
 
   // 11.3) Clear cut state
