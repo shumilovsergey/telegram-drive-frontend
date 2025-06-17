@@ -21,6 +21,7 @@ let cutFileObj = null;
 let cutParentPath = null;
 let selectedContext = null;
 let selectedElement = null;
+let lastMessageId = null;
 
 // NEW NAME
 function showRenameDialog(titleText, defaultValue, onConfirm) {
@@ -91,8 +92,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(USER),
     });
+
     const jsonData = await dataResp.json();
-    const files = jsonData.user_data || [];
+    lastMessageId = jsonData.user_data?.last_message_id ?? null;
+    const files = jsonData.user_data?.files ?? [];
 
     // 2.3) Build in-memory folder tree
     fileTree = buildTree(files);
@@ -237,20 +240,26 @@ function renderTree(treeNode, pathArray, container) {
         const fileEl = document.createElement("div");
         fileEl.className = "file";
 
-        // Determine extension for icon lookup
+      const typeKey = (fileObj.file_type || "").toLowerCase();
+      let iconFileName = iconMap[typeKey] || null;
+
+
+      if (!iconFileName) {
+        // fallback to extension
         const parts = fileObj.name.split(".");
         const ext = parts.length > 1 ? parts.pop().toLowerCase() : "";
-        const iconFileName = iconMap[ext] || "default.png";
+        iconFileName = iconMap[ext] || iconMap["default"];
+      }
 
-        const img = document.createElement("img");
-        img.className = "icon";
-        img.src = `./assets/${iconFileName}`;
-        img.alt = ext;
-        fileEl.appendChild(img);
+      const img = document.createElement("img");
+      img.className = "icon";
+      img.src = `./assets/${iconFileName}`;
+      img.alt = typeKey || "";
+      fileEl.appendChild(img);
 
-        const txt = document.createElement("span");
-        txt.textContent = fileObj.name;
-        fileEl.appendChild(txt);
+      const txt = document.createElement("span");
+      txt.textContent = fileObj.name;
+      fileEl.appendChild(txt);
 
         // 4.2.a) Create the “selector” circle on the right
         const selectBtn = document.createElement("span");
@@ -715,9 +724,12 @@ async function updateBackend() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_id:   USER.user_id,
-        token:     USER.token,
-        user_data: newUserData
+        user_id: USER.user_id,
+        token:   USER.token,
+        user_data: {
+          last_message_id: lastMessageId,  // carry over the old value
+          files:            newUserData    // the flattened files array
+        }
       })
     });
     if (!resp.ok) {
@@ -728,6 +740,7 @@ async function updateBackend() {
     showToast("Нет связи с сервером :^( попробуй позже!");
   }
 }
+
 
 // ------------------------------
 // 19) getNodeFromPath(tree, pathArr)
