@@ -243,14 +243,6 @@ function renderTree(treeNode, pathArray, container) {
       const typeKey = (fileObj.file_type || "").toLowerCase();
       let iconFileName = iconMap[typeKey] || null;
 
-
-      if (!iconFileName) {
-        // fallback to extension
-        const parts = fileObj.name.split(".");
-        const ext = parts.length > 1 ? parts.pop().toLowerCase() : "";
-        iconFileName = iconMap[ext] || iconMap["default"];
-      }
-
       const img = document.createElement("img");
       img.className = "icon";
       img.src = `./assets/${iconFileName}`;
@@ -294,13 +286,17 @@ function renderTree(treeNode, pathArray, container) {
 // ------------------------------
 // 5) deselectCurrent(): clears any selected row & hides bottom menu
 // ------------------------------
+
 function deselectCurrent() {
-  if (selectedElement) {
-    selectedElement.classList.remove("selected");
-    selectedElement = null;
-    selectedContext = null;
-    hideBottomMenu();
-  }
+  // Remove "selected" from every folder or file row
+  document
+    .querySelectorAll(".folder.selected, .file.selected")
+    .forEach(el => el.classList.remove("selected"));
+
+  // Clear our stored references & hide the bottom bar
+  selectedElement  = null;
+  selectedContext  = null;
+  hideBottomMenu();
 }
 
 // ------------------------------
@@ -621,12 +617,16 @@ async function handleNewFolder(folderPathArr) {
   const pathKey = folderPathArr.join("/");
   expandedPaths.add(pathKey);
 
+  deselectCurrent();
+
   // Re-render
   const rootEl = document.getElementById("drive-root");
   renderTree(fileTree, [], rootEl);
 
   // Sync
   await updateBackend();
+
+  showToast(`Создана папка в "${folderPathArr.join("/")}".`);
 }
 
 // ------------------------------
@@ -702,12 +702,10 @@ async function updateBackend() {
   function recurse(node, pathSoFar) {
     if (node.files) {
       node.files.forEach(f => {
-        const parts = f.name.split(".");
-        const ext = parts.length > 1 ? parts.pop().toLowerCase() : "";
         const filePath = "/" + [...pathSoFar, f.name].join("/");
         newUserData.push({
           file_id:   f.file_id,
-          file_type: ext,
+          file_type: f.file_type,   // <- use the original file_type
           file_path: filePath
         });
       });
