@@ -191,43 +191,29 @@ function renderTree(treeNode, pathArray, container) {
       txt.textContent = folderName;
       folderEl.appendChild(txt);
 
-      // 4.1.b) Create the “selector” circle on the right
-      const selectBtn = document.createElement("span");
-      selectBtn.className = "select-btn";
-      folderEl.appendChild(selectBtn);
+      // 4.1.b) Create the toggle actions button
+      const toggleBtn = document.createElement("span");
+      toggleBtn.className = "toggle-actions-btn";
+      toggleBtn.textContent = "◀";
+      folderEl.appendChild(toggleBtn);
 
-      // 4.1.c) Clicking the folder row: select/deselect or expand/collapse
+      // 4.1.c) Clicking the folder row toggles expand/collapse
       folderEl.addEventListener("click", (event) => {
-        // If already selected, toggle expand/collapse
-        if (selectedContext && selectedContext.type === "folder" && 
-            selectedContext.folderPath.join("/") === pathKey) {
-          if (expandedPaths.has(pathKey)) {
-            expandedPaths.delete(pathKey);
-          } else {
-            expandedPaths.add(pathKey);
-          }
-          const rootEl = document.getElementById("drive-root");
-          renderTree(fileTree, [], rootEl);
+        if (expandedPaths.has(pathKey)) {
+          expandedPaths.delete(pathKey);
         } else {
-          // Otherwise select this folder
-          handleSelectFolder(folderPathArr, folderEl);
+          expandedPaths.add(pathKey);
         }
+        const rootEl = document.getElementById("drive-root");
+        renderTree(fileTree, [], rootEl);
       });
 
-      // 4.1.d) Clicking the selector circle selects/deselects this folder
-      selectBtn.addEventListener("click", event => {
+      // 4.1.d) Clicking the toggle button shows/hides actions
+      toggleBtn.addEventListener("click", event => {
         event.stopPropagation(); // Prevent triggering the folderEl click
-        handleSelectFolder(folderPathArr, folderEl);
+        toggleInlineActions(folderEl, { type: "folder", folderPath: folderPathArr }, toggleBtn);
       });
 
-      // 4.1.e) If this folder is marked as “selected,” add the class
-      if (
-        selectedContext &&
-        selectedContext.type === "folder" &&
-        selectedContext.folderPath.join("/") === pathKey
-      ) {
-        folderEl.classList.add("selected");
-      }
 
       container.appendChild(folderEl);
 
@@ -261,30 +247,23 @@ function renderTree(treeNode, pathArray, container) {
       txt.textContent = fileObj.name;
       fileEl.appendChild(txt);
 
-        // 4.2.a) Create the “selector” circle on the right
-        const selectBtn = document.createElement("span");
-        selectBtn.className = "select-btn";
-        fileEl.appendChild(selectBtn);
+        // 4.2.a) Create the toggle actions button  
+        const toggleBtn = document.createElement("span");
+        toggleBtn.className = "toggle-actions-btn";
+        toggleBtn.textContent = "◀";
+        fileEl.appendChild(toggleBtn);
 
-        // 4.2.b) Clicking the file row selects/deselects it
+        // 4.2.b) Clicking the file row does nothing (actions via toggle button)
         fileEl.addEventListener("click", () => {
-          handleSelectFile(fileObj, pathArray, fileEl);
+          // File click does nothing - use toggle button for actions
         });
 
-        // 4.2.c) Clicking the selector circle selects/deselects this file
-        selectBtn.addEventListener("click", event => {
+        // 4.2.c) Clicking the toggle button shows/hides actions
+        toggleBtn.addEventListener("click", event => {
           event.stopPropagation();
-          handleSelectFile(fileObj, pathArray, fileEl);
+          toggleInlineActions(fileEl, { type: "file", fileObj, parentPath: pathArray }, toggleBtn);
         });
 
-        // 4.2.d) If this file is “selected,” add the class
-        if (
-          selectedContext &&
-          selectedContext.type === "file" &&
-          selectedContext.fileObj.file_id === fileObj.file_id
-        ) {
-          fileEl.classList.add("selected");
-        }
 
         container.appendChild(fileEl);
       });
@@ -363,9 +342,20 @@ function handleSelectFile(fileObj, parentPathArr, rowEl) {
 // ------------------------------
 // 8) showBottomMenu(): renders bottom nav buttons based on selectedContext
 // ------------------------------
-function showInlineActions(element, context) {
-  // Remove any existing inline actions
+function toggleInlineActions(element, context, toggleButton) {
+  const existingActions = element.querySelector('.inline-actions');
+  
+  if (existingActions) {
+    // Hide actions
+    existingActions.remove();
+    toggleButton.textContent = "◀";
+    return;
+  }
+
+  // Show actions
+  // First, remove any other visible actions
   document.querySelectorAll('.inline-actions').forEach(el => el.remove());
+  document.querySelectorAll('.toggle-actions-btn').forEach(btn => btn.textContent = "◀");
 
   const actionsDiv = document.createElement('div');
   actionsDiv.className = 'inline-actions';
@@ -380,7 +370,9 @@ function showInlineActions(element, context) {
       btn.addEventListener("click", e => {
         e.stopPropagation();
         onClick();
-        deselectCurrent();
+        // Hide actions after click
+        actionsDiv.remove();
+        toggleButton.textContent = "◀";
       });
     }
     return btn;
@@ -437,8 +429,17 @@ function showInlineActions(element, context) {
     );
   }
 
-  // Add actions to the selected element
+  // Add hide button at the end
+  actionsDiv.appendChild(
+    makeActionButton("▶", () => {
+      actionsDiv.remove();
+      toggleButton.textContent = "◀";
+    }, false)
+  );
+
+  // Add actions to the element and update toggle button
   element.appendChild(actionsDiv);
+  toggleButton.textContent = "▶";
 }
 
 // ------------------------------
