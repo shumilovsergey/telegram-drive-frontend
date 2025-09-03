@@ -258,7 +258,7 @@ function renderTree(treeNode, pathArray, container) {
       .forEach(fileObj => {
         const fileEl = document.createElement("div");
         fileEl.className = "file";
-        fileEl.draggable = true;
+        fileEl.draggable = false; // Initially not draggable
 
       const typeKey = (fileObj.file_type || "").toLowerCase();
       let iconFileName = iconMap[typeKey] || null;
@@ -279,10 +279,8 @@ function renderTree(treeNode, pathArray, container) {
         toggleBtn.textContent = "◀";
         fileEl.appendChild(toggleBtn);
 
-        // 4.2.b) Clicking the file row does nothing (actions via toggle button)
-        fileEl.addEventListener("click", () => {
-          // File click does nothing - use toggle button for actions
-        });
+        // 4.2.b) File click is handled by long-press system
+        // Normal clicks do nothing to avoid interfering with long-press
 
         // 4.2.c) Clicking the toggle button shows/hides actions
         toggleBtn.addEventListener("click", event => {
@@ -290,18 +288,102 @@ function renderTree(treeNode, pathArray, container) {
           toggleInlineActions(fileEl, { type: "file", fileObj, parentPath: pathArray }, toggleBtn);
         });
 
-        // 4.2.d) Drag and drop handlers for files
+        // 4.2.d) Long-press drag and drop handlers
+        let longPressTimer = null;
+        let isDragReady = false;
+        let startX = 0, startY = 0;
+
+        // Mouse/touch start
+        function startLongPress(event) {
+          const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+          const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+          startX = clientX;
+          startY = clientY;
+          
+          fileEl.classList.add("long-pressing");
+          
+          longPressTimer = setTimeout(() => {
+            // Activate drag mode
+            fileEl.classList.remove("long-pressing");
+            fileEl.classList.add("drag-ready");
+            fileEl.draggable = true;
+            isDragReady = true;
+            
+            // Haptic feedback
+            if (navigator.vibrate) {
+              navigator.vibrate(50);
+            }
+            
+            // Show drag mode indicator
+            showDragModeIndicator();
+            
+            // Telegram haptic feedback if available
+            if (window.Telegram && window.Telegram.WebApp.HapticFeedback) {
+              window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+            }
+          }, 500); // 500ms long press
+        }
+
+        // Mouse/touch end
+        function endLongPress(event) {
+          clearTimeout(longPressTimer);
+          fileEl.classList.remove("long-pressing");
+          
+          if (!isDragReady) {
+            // Normal click behavior if not drag ready
+            // No action for files on normal click
+          }
+        }
+
+        // Mouse/touch move - cancel long press if moved too much
+        function cancelLongPress(event) {
+          if (!isDragReady && longPressTimer) {
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+            const deltaX = Math.abs(clientX - startX);
+            const deltaY = Math.abs(clientY - startY);
+            
+            if (deltaX > 10 || deltaY > 10) {
+              clearTimeout(longPressTimer);
+              fileEl.classList.remove("long-pressing");
+            }
+          }
+        }
+
+        // Add event listeners
+        fileEl.addEventListener("mousedown", startLongPress);
+        fileEl.addEventListener("touchstart", startLongPress, { passive: false });
+        
+        fileEl.addEventListener("mouseup", endLongPress);
+        fileEl.addEventListener("touchend", endLongPress);
+        
+        fileEl.addEventListener("mousemove", cancelLongPress);
+        fileEl.addEventListener("touchmove", cancelLongPress, { passive: false });
+        
+        fileEl.addEventListener("mouseleave", endLongPress);
+
+        // Drag start
         fileEl.addEventListener("dragstart", event => {
+          if (!isDragReady) {
+            event.preventDefault();
+            return;
+          }
+          
           event.dataTransfer.setData("text/plain", JSON.stringify({
             type: "file",
             fileObj: fileObj,
             parentPath: pathArray
           }));
           fileEl.classList.add("dragging");
+          hideDragModeIndicator();
         });
 
+        // Drag end
         fileEl.addEventListener("dragend", event => {
-          fileEl.classList.remove("dragging");
+          fileEl.classList.remove("dragging", "drag-ready");
+          fileEl.draggable = false;
+          isDragReady = false;
+          hideDragModeIndicator();
         });
 
 
@@ -485,7 +567,30 @@ function hideInlineActions() {
 }
 
 // ------------------------------
-// 10) handleDragDrop(fileObj, sourcePath, targetPath)
+// 10) Drag mode indicator helpers
+// ------------------------------
+function showDragModeIndicator() {
+  const indicator = document.createElement('div');
+  indicator.id = 'drag-mode-indicator';
+  indicator.className = 'drag-mode-indicator';
+  indicator.textContent = 'Перетащите файл в папку';
+  document.body.appendChild(indicator);
+  
+  // Auto hide after 3 seconds
+  setTimeout(() => {
+    hideDragModeIndicator();
+  }, 3000);
+}
+
+function hideDragModeIndicator() {
+  const indicator = document.getElementById('drag-mode-indicator');
+  if (indicator) {
+    indicator.remove();
+  }
+}
+
+// ------------------------------
+// 11) handleDragDrop(fileObj, sourcePath, targetPath)
 // ------------------------------
 async function handleDragDrop(fileObj, sourcePath, targetPath) {
   // Same logic as cut/paste but called from drag and drop
