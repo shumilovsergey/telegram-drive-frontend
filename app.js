@@ -196,17 +196,22 @@ function renderTree(treeNode, pathArray, container) {
       selectBtn.className = "select-btn";
       folderEl.appendChild(selectBtn);
 
-      // 4.1.c) Clicking the folder row toggles expansion/collapse,
-      //         and also deselects any currently-selected item.
-      folderEl.addEventListener("click", () => {
-        deselectCurrent();
-        if (expandedPaths.has(pathKey)) {
-          expandedPaths.delete(pathKey);
+      // 4.1.c) Clicking the folder row: select/deselect or expand/collapse
+      folderEl.addEventListener("click", (event) => {
+        // If already selected, toggle expand/collapse
+        if (selectedContext && selectedContext.type === "folder" && 
+            selectedContext.folderPath.join("/") === pathKey) {
+          if (expandedPaths.has(pathKey)) {
+            expandedPaths.delete(pathKey);
+          } else {
+            expandedPaths.add(pathKey);
+          }
+          const rootEl = document.getElementById("drive-root");
+          renderTree(fileTree, [], rootEl);
         } else {
-          expandedPaths.add(pathKey);
+          // Otherwise select this folder
+          handleSelectFolder(folderPathArr, folderEl);
         }
-        const rootEl = document.getElementById("drive-root");
-        renderTree(fileTree, [], rootEl);
       });
 
       // 4.1.d) Clicking the selector circle selects/deselects this folder
@@ -261,9 +266,9 @@ function renderTree(treeNode, pathArray, container) {
         selectBtn.className = "select-btn";
         fileEl.appendChild(selectBtn);
 
-        // 4.2.b) Clicking the file row deselects any selected item
+        // 4.2.b) Clicking the file row selects/deselects it
         fileEl.addEventListener("click", () => {
-          deselectCurrent();
+          handleSelectFile(fileObj, pathArray, fileEl);
         });
 
         // 4.2.c) Clicking the selector circle selects/deselects this file
@@ -296,10 +301,10 @@ function deselectCurrent() {
     .querySelectorAll(".folder.selected, .file.selected")
     .forEach(el => el.classList.remove("selected"));
 
-  // Clear our stored references & hide the bottom bar
+  // Clear our stored references & hide inline actions
   selectedElement  = null;
   selectedContext  = null;
-  hideBottomMenu();
+  hideInlineActions();
 }
 
 // ------------------------------
@@ -326,7 +331,7 @@ function handleSelectFolder(folderPathArr, rowEl) {
     type: "folder",
     folderPath: folderPathArr.slice()
   };
-  showBottomMenu();
+  showInlineActions(rowEl, selectedContext);
 }
 
 // ------------------------------
@@ -352,20 +357,21 @@ function handleSelectFile(fileObj, parentPathArr, rowEl) {
     fileObj: { ...fileObj },
     parentPath: parentPathArr.slice()
   };
-  showBottomMenu();
+  showInlineActions(rowEl, selectedContext);
 }
 
 // ------------------------------
 // 8) showBottomMenu(): renders bottom nav buttons based on selectedContext
 // ------------------------------
-function showBottomMenu() {
-  const bottomNav = document.getElementById("bottom-menu");
-  bottomNav.innerHTML = ""; // Clear old buttons
+function showInlineActions(element, context) {
+  // Remove any existing inline actions
+  document.querySelectorAll('.inline-actions').forEach(el => el.remove());
 
-  if (!selectedContext) return;
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'inline-actions';
 
-  // Helper to create a <button> for the bottom menu
-  function makeButton(emoji, onClick, disabled = false) {
+  // Helper to create action button
+  function makeActionButton(emoji, onClick, disabled = false) {
     const btn = document.createElement("button");
     btn.textContent = emoji;
     if (disabled) {
@@ -380,64 +386,66 @@ function showBottomMenu() {
     return btn;
   }
 
-  if (selectedContext.type === "file") {
-    const { fileObj, parentPath } = selectedContext;
+  if (context.type === "file") {
+    const { fileObj, parentPath } = context;
 
     // ⬇️ Download
-    bottomNav.appendChild(
-      makeButton("⬇️", () => handleDownload(fileObj), false)
-    );
-
-    // ✏️ Rename (only name, keep extension)
-    bottomNav.appendChild(
-      makeButton("✏️", () => handleRenameFile(fileObj, parentPath), false)
-    );
-
-    // ✂️ Cut
-    bottomNav.appendChild(
-      makeButton("✂️", () => handleCut(fileObj, parentPath), false)
-    );
-
-    // 🗑️ Delete
-    bottomNav.appendChild(
-      makeButton("🗑️", () => handleDeleteFile(fileObj, parentPath), false)
-    );
-  }
-  else if (selectedContext.type === "folder") {
-    const { folderPath } = selectedContext;
-
-    // ➕ Add
-    bottomNav.appendChild(
-      makeButton("➕", () => handleNewFolder(folderPath), false)
+    actionsDiv.appendChild(
+      makeActionButton("⬇️", () => handleDownload(fileObj), false)
     );
 
     // ✏️ Rename
-    bottomNav.appendChild(
-      makeButton("✏️", () => handleRenameFolder(folderPath), false)
+    actionsDiv.appendChild(
+      makeActionButton("✏️", () => handleRenameFile(fileObj, parentPath), false)
     );
 
-    // 📋 Paste (only if something is cut)
-    bottomNav.appendChild(
-      makeButton(
+    // ✂️ Cut
+    actionsDiv.appendChild(
+      makeActionButton("✂️", () => handleCut(fileObj, parentPath), false)
+    );
+
+    // 🗑️ Delete
+    actionsDiv.appendChild(
+      makeActionButton("🗑️", () => handleDeleteFile(fileObj, parentPath), false)
+    );
+  }
+  else if (context.type === "folder") {
+    const { folderPath } = context;
+
+    // ➕ Add Folder
+    actionsDiv.appendChild(
+      makeActionButton("➕", () => handleNewFolder(folderPath), false)
+    );
+
+    // ✏️ Rename
+    actionsDiv.appendChild(
+      makeActionButton("✏️", () => handleRenameFolder(folderPath), false)
+    );
+
+    // 📋 Paste
+    actionsDiv.appendChild(
+      makeActionButton(
         "📋",
         () => handlePasteToFolder(folderPath),
         cutFileObj === null
       )
     );
 
-    // 🗑️ Delete (only if empty)
-    bottomNav.appendChild(
-      makeButton("🗑️", () => handleDeleteFolder(folderPath), false)
+    // 🗑️ Delete
+    actionsDiv.appendChild(
+      makeActionButton("🗑️", () => handleDeleteFolder(folderPath), false)
     );
   }
+
+  // Add actions to the selected element
+  element.appendChild(actionsDiv);
 }
 
 // ------------------------------
 // 9) hideBottomMenu()
 // ------------------------------
-function hideBottomMenu() {
-  const bottomNav = document.getElementById("bottom-menu");
-  bottomNav.innerHTML = ""; // Just clear the buttons
+function hideInlineActions() {
+  document.querySelectorAll('.inline-actions').forEach(el => el.remove());
 }
 
 // ------------------------------
