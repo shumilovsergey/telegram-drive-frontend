@@ -361,7 +361,6 @@ function handleSelectFile(fileObj, parentPathArr, rowEl) {
 function showBottomMenu() {
   const bottomNav = document.getElementById("bottom-menu");
   bottomNav.innerHTML = ""; // Clear old buttons
-  bottomNav.classList.remove("hidden");
   bottomNav.classList.add("show");
 
   if (!selectedContext) return;
@@ -440,10 +439,6 @@ function showBottomMenu() {
 function hideBottomMenu() {
   const bottomNav = document.getElementById("bottom-menu");
   bottomNav.classList.remove("show");
-  // Add hidden class after animation completes
-  setTimeout(() => {
-    bottomNav.classList.add("hidden");
-  }, 300);
 }
 
 // ------------------------------
