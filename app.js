@@ -1,6 +1,9 @@
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
+tg.enableClosingConfirmation();
+tg.setHeaderColor('#ffffff');
+tg.setBackgroundColor('#f8f9fa');
 
 const USER = {
   user_id: tg.initDataUnsafe.user.id,
@@ -363,9 +366,9 @@ function showBottomMenu() {
   if (!selectedContext) return;
 
   // Helper to create a <button> for the bottom menu
-  function makeButton(label, onClick, disabled = false) {
+  function makeButton(emoji, onClick, disabled = false) {
     const btn = document.createElement("button");
-    btn.textContent = label;
+    btn.textContent = emoji;
     if (disabled) {
       btn.classList.add("disabled");
     } else {
@@ -383,22 +386,22 @@ function showBottomMenu() {
 
     // ⬇️ Download
     bottomNav.appendChild(
-      makeButton("⬇️ Скачать", () => handleDownload(fileObj), false)
+      makeButton("⬇️", () => handleDownload(fileObj), false)
     );
 
     // ✏️ Rename (only name, keep extension)
     bottomNav.appendChild(
-      makeButton("✏️ Имя", () => handleRenameFile(fileObj, parentPath), false)
+      makeButton("✏️", () => handleRenameFile(fileObj, parentPath), false)
     );
 
     // ✂️ Cut
     bottomNav.appendChild(
-      makeButton("✂️ Вырезать", () => handleCut(fileObj, parentPath), false)
+      makeButton("✂️", () => handleCut(fileObj, parentPath), false)
     );
 
     // 🗑️ Delete
     bottomNav.appendChild(
-      makeButton("🗑️ Удалить", () => handleDeleteFile(fileObj, parentPath), false)
+      makeButton("🗑️", () => handleDeleteFile(fileObj, parentPath), false)
     );
   }
   else if (selectedContext.type === "folder") {
@@ -406,18 +409,18 @@ function showBottomMenu() {
 
     // ➕ Add
     bottomNav.appendChild(
-      makeButton("➕ Папку", () => handleNewFolder(folderPath), false)
+      makeButton("➕", () => handleNewFolder(folderPath), false)
     );
 
     // ✏️ Rename
     bottomNav.appendChild(
-      makeButton("✏️ Имя", () => handleRenameFolder(folderPath), false)
+      makeButton("✏️", () => handleRenameFolder(folderPath), false)
     );
 
     // 📋 Paste (only if something is cut)
     bottomNav.appendChild(
       makeButton(
-        "📋 Вставить",
+        "📋",
         () => handlePasteToFolder(folderPath),
         cutFileObj === null
       )
@@ -425,7 +428,7 @@ function showBottomMenu() {
 
     // 🗑️ Delete (only if empty)
     bottomNav.appendChild(
-      makeButton("🗑️ Удалить", () => handleDeleteFolder(folderPath), false)
+      makeButton("🗑️", () => handleDeleteFolder(folderPath), false)
     );
   }
 }

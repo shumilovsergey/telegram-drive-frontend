@@ -4,6 +4,7 @@ body, html {
   margin: 0;
   padding: 0;
   height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
   background: #f8f9fa;
   color: #212529;
   display: flex;
@@ -12,6 +13,8 @@ body, html {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-weight: 400;
   line-height: 1.5;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Remove old background blur effects */
@@ -23,10 +26,12 @@ body::before {
 #app {
   position: relative;
   height: 100%;
+  height: 100dvh; /* Dynamic viewport height */
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: #f8f9fa;
+  width: 100vw;
 }
 
 /* ===== TOP NAVIGATION ===== */
@@ -217,49 +222,51 @@ body::before {
 /* ===== BOTTOM MENU ===== */
 #bottom-menu {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom) + 8px);
-  left: 12px;
-  right: 12px;
-  height: 52px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + env(safe-area-inset-bottom));
   background: #ffffff;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
+  border: none;
+  border-radius: 0;
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  padding: 0 1rem;
-  z-index: 20;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  justify-content: space-evenly;
+  padding: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 999;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 }
 
 #bottom-menu button {
-  background: #ffffff;
-  border: 2px solid #dee2e6;
+  background: transparent;
+  border: none;
   color: #495057;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 1.5rem;
   cursor: pointer;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
   border-radius: 6px;
   transition: all 0.15s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 1;
 }
 
 #bottom-menu button:hover:not(.disabled) {
   background: #f8f9fa;
-  border-color: #adb5bd;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transform: scale(1.1);
 }
 
 #bottom-menu button:active:not(.disabled) {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transform: scale(0.95);
 }
 
 #bottom-menu button.disabled {
   color: #adb5bd;
-  border-color: #e9ecef;
   cursor: default;
   pointer-events: none;
   background: #f8f9fa;
