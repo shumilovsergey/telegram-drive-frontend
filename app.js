@@ -177,6 +177,8 @@ function renderTree(treeNode, pathArray, container) {
       // 4.1.a) Create the folder row
       const folderEl = document.createElement("div");
       folderEl.className = "folder";
+      // Store the folder path as data attribute for drag and drop
+      folderEl.dataset.folderPath = JSON.stringify(folderPathArr);
 
       // Icon for folder
       const folderIconName = iconMap["folder"] || "folder.png";
@@ -214,30 +216,6 @@ function renderTree(treeNode, pathArray, container) {
         toggleInlineActions(folderEl, { type: "folder", folderPath: folderPathArr }, toggleBtn);
       });
 
-      // 4.1.e) Drag and drop handlers for folders
-      folderEl.addEventListener("dragover", event => {
-        event.preventDefault(); // Allow drop
-        folderEl.classList.add("drag-over");
-      });
-
-      folderEl.addEventListener("dragleave", event => {
-        folderEl.classList.remove("drag-over");
-      });
-
-      folderEl.addEventListener("drop", event => {
-        event.preventDefault();
-        event.stopPropagation();
-        folderEl.classList.remove("drag-over");
-        
-        try {
-          const dragData = JSON.parse(event.dataTransfer.getData("text/plain"));
-          if (dragData.type === "file") {
-            handleDragDrop(dragData.fileObj, dragData.parentPath, folderPathArr);
-          }
-        } catch (e) {
-          console.error("Invalid drag data:", e);
-        }
-      });
 
 
       container.appendChild(folderEl);
@@ -288,14 +266,13 @@ function renderTree(treeNode, pathArray, container) {
           toggleInlineActions(fileEl, { type: "file", fileObj, parentPath: pathArray }, toggleBtn);
         });
 
-        // 4.2.d) Long-press drag and drop handlers
+        // 4.2.d) Touch-based drag and drop system
         let longPressTimer = null;
-        let isDragReady = false;
+        let isDragActive = false;
+        let dragPreview = null;
         let startX = 0, startY = 0;
 
-        // Mouse/touch start
         function startLongPress(event) {
-          // Prevent text selection and context menu on iOS
           if (event.touches) {
             event.preventDefault();
           }
@@ -311,97 +288,138 @@ function renderTree(treeNode, pathArray, container) {
             // Activate drag mode
             fileEl.classList.remove("long-pressing");
             fileEl.classList.add("drag-ready");
-            fileEl.draggable = true;
-            isDragReady = true;
             
             // Haptic feedback
             if (navigator.vibrate) {
               navigator.vibrate(50);
             }
             
-            // Show drag mode indicator
-            showDragModeIndicator();
-            
-            // Telegram haptic feedback if available
             if (window.Telegram && window.Telegram.WebApp.HapticFeedback) {
               window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
             }
-          }, 400); // Reduced to 400ms for better mobile feel
-        }
-
-        // Mouse/touch end
-        function endLongPress(event) {
-          clearTimeout(longPressTimer);
-          fileEl.classList.remove("long-pressing");
-          
-          if (!isDragReady) {
-            // Normal click behavior if not drag ready
-            // No action for files on normal click
-          }
-        }
-
-        // Mouse/touch move - cancel long press if moved too much
-        function cancelLongPress(event) {
-          if (!isDragReady && longPressTimer) {
-            // Prevent scrolling during long press
-            if (event.touches) {
-              event.preventDefault();
-            }
             
+            showDragModeIndicator();
+          }, 400);
+        }
+
+        function handleMove(event) {
+          if (longPressTimer) {
+            // Cancel long press if moved too much during initial press
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
             const clientY = event.touches ? event.touches[0].clientY : event.clientY;
             const deltaX = Math.abs(clientX - startX);
             const deltaY = Math.abs(clientY - startY);
             
-            // Increased threshold for mobile
             if (deltaX > 15 || deltaY > 15) {
               clearTimeout(longPressTimer);
               fileEl.classList.remove("long-pressing");
             }
+          } else if (fileEl.classList.contains("drag-ready") && !isDragActive) {
+            // Start actual dragging
+            startDragging(event);
+          } else if (isDragActive) {
+            // Continue dragging
+            updateDrag(event);
           }
         }
 
-        // Add event listeners with proper iOS handling
+        function startDragging(event) {
+          if (event.touches) {
+            event.preventDefault();
+          }
+          
+          isDragActive = true;
+          fileEl.classList.add("dragging");
+          hideDragModeIndicator();
+          
+          // Create drag preview
+          dragPreview = createDragPreview(fileObj.name);
+          
+          // Update preview position
+          updateDrag(event);
+        }
+
+        function updateDrag(event) {
+          if (!dragPreview) return;
+          
+          const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+          const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+          
+          dragPreview.style.left = clientX + 'px';
+          dragPreview.style.top = clientY + 'px';
+          
+          // Check if over a folder
+          const elementUnder = document.elementFromPoint(clientX, clientY);
+          if (elementUnder) {
+            const folder = elementUnder.closest('.folder');
+            
+            // Remove highlight from all folders
+            document.querySelectorAll('.folder.drag-over').forEach(f => {
+              f.classList.remove('drag-over');
+            });
+            
+            // Add highlight to current folder
+            if (folder && folder !== fileEl) {
+              folder.classList.add('drag-over');
+            }
+          }
+        }
+
+        function endDrag(event) {
+          clearTimeout(longPressTimer);
+          fileEl.classList.remove("long-pressing", "drag-ready");
+          
+          if (isDragActive) {
+            if (event.touches) {
+              event.preventDefault();
+            }
+            
+            // Check for drop target
+            const clientX = event.changedTouches ? event.changedTouches[0].clientX : event.clientX;
+            const clientY = event.changedTouches ? event.changedTouches[0].clientY : event.clientY;
+            const elementUnder = document.elementFromPoint(clientX, clientY);
+            
+            if (elementUnder) {
+              const folder = elementUnder.closest('.folder');
+              if (folder && folder !== fileEl) {
+                // Get folder path from the folder element
+                const folderData = findFolderPath(folder);
+                if (folderData) {
+                  handleDragDrop(fileObj, pathArray, folderData.path);
+                }
+              }
+            }
+            
+            // Clean up
+            isDragActive = false;
+            fileEl.classList.remove("dragging");
+            removeDragPreview();
+            
+            // Remove all drag-over classes
+            document.querySelectorAll('.folder.drag-over').forEach(f => {
+              f.classList.remove('drag-over');
+            });
+          }
+          
+          hideDragModeIndicator();
+        }
+
+        // Event listeners
         fileEl.addEventListener("mousedown", startLongPress);
         fileEl.addEventListener("touchstart", startLongPress, { passive: false });
         
-        fileEl.addEventListener("mouseup", endLongPress);
-        fileEl.addEventListener("touchend", endLongPress, { passive: false });
+        fileEl.addEventListener("mousemove", handleMove);
+        fileEl.addEventListener("touchmove", handleMove, { passive: false });
         
-        fileEl.addEventListener("mousemove", cancelLongPress);
-        fileEl.addEventListener("touchmove", cancelLongPress, { passive: false });
+        fileEl.addEventListener("mouseup", endDrag);
+        fileEl.addEventListener("touchend", endDrag, { passive: false });
         
-        fileEl.addEventListener("mouseleave", endLongPress);
-        fileEl.addEventListener("touchcancel", endLongPress); // iOS specific
+        fileEl.addEventListener("mouseleave", endDrag);
+        fileEl.addEventListener("touchcancel", endDrag);
         
-        // Prevent context menu on long press (iOS/Android)
         fileEl.addEventListener("contextmenu", event => {
           event.preventDefault();
           return false;
-        });
-
-        // Drag start
-        fileEl.addEventListener("dragstart", event => {
-          if (!isDragReady) {
-            event.preventDefault();
-            return;
-          }
-          
-          event.dataTransfer.setData("text/plain", JSON.stringify({
-            type: "file",
-            fileObj: fileObj,
-            parentPath: pathArray
-          }));
-          fileEl.classList.add("dragging");
-          hideDragModeIndicator();
-        });
-
-        // Drag end
-        fileEl.addEventListener("dragend", event => {
-          fileEl.classList.remove("dragging", "drag-ready");
-          fileEl.draggable = false;
-          isDragReady = false;
-          hideDragModeIndicator();
         });
 
 
@@ -605,6 +623,54 @@ function hideDragModeIndicator() {
   if (indicator) {
     indicator.remove();
   }
+}
+
+// ------------------------------
+// Drag preview helpers
+// ------------------------------
+function createDragPreview(fileName) {
+  removeDragPreview(); // Remove any existing preview
+  
+  const preview = document.createElement('div');
+  preview.id = 'drag-preview';
+  preview.className = 'drag-preview';
+  preview.style.position = 'fixed';
+  preview.style.pointerEvents = 'none';
+  preview.style.zIndex = '1000';
+  preview.style.background = 'rgba(33, 150, 243, 0.9)';
+  preview.style.color = 'white';
+  preview.style.padding = '0.5rem 1rem';
+  preview.style.borderRadius = '8px';
+  preview.style.fontSize = '0.875rem';
+  preview.style.fontWeight = '600';
+  preview.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+  preview.style.backdropFilter = 'blur(5px)';
+  preview.textContent = fileName;
+  
+  document.body.appendChild(preview);
+  return preview;
+}
+
+function removeDragPreview() {
+  const existing = document.getElementById('drag-preview');
+  if (existing) {
+    existing.remove();
+  }
+}
+
+// ------------------------------
+// Folder path finder
+// ------------------------------
+function findFolderPath(folderElement) {
+  if (folderElement.dataset.folderPath) {
+    try {
+      const path = JSON.parse(folderElement.dataset.folderPath);
+      return { path: path };
+    } catch (e) {
+      console.error('Error parsing folder path:', e);
+    }
+  }
+  return { path: [] };
 }
 
 // ------------------------------
