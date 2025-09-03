@@ -214,6 +214,31 @@ function renderTree(treeNode, pathArray, container) {
         toggleInlineActions(folderEl, { type: "folder", folderPath: folderPathArr }, toggleBtn);
       });
 
+      // 4.1.e) Drag and drop handlers for folders
+      folderEl.addEventListener("dragover", event => {
+        event.preventDefault(); // Allow drop
+        folderEl.classList.add("drag-over");
+      });
+
+      folderEl.addEventListener("dragleave", event => {
+        folderEl.classList.remove("drag-over");
+      });
+
+      folderEl.addEventListener("drop", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        folderEl.classList.remove("drag-over");
+        
+        try {
+          const dragData = JSON.parse(event.dataTransfer.getData("text/plain"));
+          if (dragData.type === "file") {
+            handleDragDrop(dragData.fileObj, dragData.parentPath, folderPathArr);
+          }
+        } catch (e) {
+          console.error("Invalid drag data:", e);
+        }
+      });
+
 
       container.appendChild(folderEl);
 
@@ -233,6 +258,7 @@ function renderTree(treeNode, pathArray, container) {
       .forEach(fileObj => {
         const fileEl = document.createElement("div");
         fileEl.className = "file";
+        fileEl.draggable = true;
 
       const typeKey = (fileObj.file_type || "").toLowerCase();
       let iconFileName = iconMap[typeKey] || null;
@@ -262,6 +288,20 @@ function renderTree(treeNode, pathArray, container) {
         toggleBtn.addEventListener("click", event => {
           event.stopPropagation();
           toggleInlineActions(fileEl, { type: "file", fileObj, parentPath: pathArray }, toggleBtn);
+        });
+
+        // 4.2.d) Drag and drop handlers for files
+        fileEl.addEventListener("dragstart", event => {
+          event.dataTransfer.setData("text/plain", JSON.stringify({
+            type: "file",
+            fileObj: fileObj,
+            parentPath: pathArray
+          }));
+          fileEl.classList.add("dragging");
+        });
+
+        fileEl.addEventListener("dragend", event => {
+          fileEl.classList.remove("dragging");
         });
 
 
@@ -391,14 +431,13 @@ function toggleInlineActions(element, context, toggleButton) {
       makeActionButton("✏️", () => handleRenameFile(fileObj, parentPath), false)
     );
 
-    // ✂️ Cut
-    actionsDiv.appendChild(
-      makeActionButton("✂️", () => handleCut(fileObj, parentPath), false)
-    );
-
     // 🗑️ Delete
     actionsDiv.appendChild(
-      makeActionButton("🗑️", () => handleDeleteFile(fileObj, parentPath), false)
+      makeActionButton("🗑️", () => {
+        showConfirmDialog(`Удалить файл "${fileObj.name}"?`, () => {
+          handleDeleteFile(fileObj, parentPath);
+        });
+      }, false)
     );
   }
   else if (context.type === "folder") {
@@ -414,18 +453,14 @@ function toggleInlineActions(element, context, toggleButton) {
       makeActionButton("✏️", () => handleRenameFolder(folderPath), false)
     );
 
-    // 📋 Paste
-    actionsDiv.appendChild(
-      makeActionButton(
-        "📋",
-        () => handlePasteToFolder(folderPath),
-        cutFileObj === null
-      )
-    );
-
     // 🗑️ Delete
     actionsDiv.appendChild(
-      makeActionButton("🗑️", () => handleDeleteFolder(folderPath), false)
+      makeActionButton("🗑️", () => {
+        const folderName = folderPath[folderPath.length - 1] || "папку";
+        showConfirmDialog(`Удалить папку "${folderName}"?`, () => {
+          handleDeleteFolder(folderPath);
+        });
+      }, false)
     );
   }
 
@@ -450,7 +485,74 @@ function hideInlineActions() {
 }
 
 // ------------------------------
-// 10) handleCut(fileObj, parentPathArr)
+// 10) handleDragDrop(fileObj, sourcePath, targetPath)
+// ------------------------------
+async function handleDragDrop(fileObj, sourcePath, targetPath) {
+  // Same logic as cut/paste but called from drag and drop
+  const sourceNode = getNodeFromPath(fileTree, sourcePath);
+  const targetNode = getNodeFromPath(fileTree, targetPath);
+  
+  const idx = sourceNode.files.findIndex(f => f.file_id === fileObj.file_id);
+  if (idx === -1) return;
+
+  // Remove from source
+  sourceNode.files.splice(idx, 1);
+  
+  // Add to target
+  if (!targetNode.files) targetNode.files = [];
+  
+  // Update the file path
+  const newPath = targetPath.length > 0 ? "/" + targetPath.join("/") + "/" + fileObj.name : "/" + fileObj.name;
+  
+  targetNode.files.push({
+    name: fileObj.name,
+    file_id: fileObj.file_id,
+    file_type: fileObj.file_type
+  });
+
+  // Re-render
+  const rootEl = document.getElementById("drive-root");
+  renderTree(fileTree, [], rootEl);
+
+  // Sync with backend
+  await updateBackend();
+  
+  showToast(`${fileObj.name} перемещен`);
+}
+
+// ------------------------------
+// 11) showConfirmDialog(message, onConfirm)
+// ------------------------------
+function showConfirmDialog(message, onConfirm) {
+  const modal = document.getElementById("confirm-modal");
+  const messageEl = document.getElementById("confirm-modal-message");
+  const btnOk = document.getElementById("confirm-modal-ok");
+  const btnCancel = document.getElementById("confirm-modal-cancel");
+
+  messageEl.textContent = message;
+  modal.classList.remove("hidden");
+
+  function cleanup() {
+    modal.classList.add("hidden");
+    btnOk.removeEventListener("click", okHandler);
+    btnCancel.removeEventListener("click", cancelHandler);
+  }
+  
+  function okHandler() {
+    onConfirm();
+    cleanup();
+  }
+  
+  function cancelHandler() {
+    cleanup();
+  }
+
+  btnOk.addEventListener("click", okHandler);
+  btnCancel.addEventListener("click", cancelHandler);
+}
+
+// ------------------------------
+// 12) handleCut(fileObj, parentPathArr)
 // ------------------------------
 function handleCut(fileObj, parentPathArr) {
   cutFileObj = fileObj;

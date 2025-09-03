@@ -120,8 +120,21 @@
       <h3 id="rename-modal-title">Переименовать</h3>
       <input id="rename-modal-input" type="text" />
       <div class="modal-buttons">
-        <button id="rename-modal-cancel">Отмена</button>
-        <button id="rename-modal-ok">ОК</button>
+        <button id="rename-modal-cancel" class="btn-cancel">Отмена</button>
+        <button id="rename-modal-ok" class="btn-confirm">ОК</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- popup for confirmation -->
+  <div id="confirm-modal" class="hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <h3 id="confirm-modal-title">Подтвердите действие</h3>
+      <p id="confirm-modal-message">Вы уверены?</p>
+      <div class="modal-buttons">
+        <button id="confirm-modal-cancel" class="btn-cancel">Отмена</button>
+        <button id="confirm-modal-ok" class="btn-delete">Удалить</button>
       </div>
     </div>
   </div>

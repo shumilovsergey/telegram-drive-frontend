@@ -218,6 +218,36 @@ body::before {
   padding-left: 1rem;
 }
 
+/* ===== DRAG AND DROP ===== */
+.file[draggable="true"] {
+  cursor: grab;
+}
+
+.file.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.folder.drag-over {
+  background: rgba(33, 150, 243, 0.1);
+  border-color: #2196f3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.drag-preview {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #2196f3;
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  color: #2196f3;
+  backdrop-filter: blur(5px);
+  transform: translate(-50%, -50%);
+}
+
 /* ===== INLINE ACTIONS ===== */
 .inline-actions {
   position: absolute;
