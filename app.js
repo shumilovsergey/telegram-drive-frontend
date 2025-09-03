@@ -361,7 +361,6 @@ function handleSelectFile(fileObj, parentPathArr, rowEl) {
 function showBottomMenu() {
   const bottomNav = document.getElementById("bottom-menu");
   bottomNav.innerHTML = ""; // Clear old buttons
-  bottomNav.classList.add("show");
 
   if (!selectedContext) return;
 
@@ -375,7 +374,7 @@ function showBottomMenu() {
       btn.addEventListener("click", e => {
         e.stopPropagation();
         onClick();
-        hideBottomMenu();
+        deselectCurrent();
       });
     }
     return btn;
@@ -438,7 +437,7 @@ function showBottomMenu() {
 // ------------------------------
 function hideBottomMenu() {
   const bottomNav = document.getElementById("bottom-menu");
-  bottomNav.classList.remove("show");
+  bottomNav.innerHTML = ""; // Just clear the buttons
 }
 
 // ------------------------------
