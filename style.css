@@ -222,6 +222,15 @@ body::before {
 .file {
   cursor: pointer;
   transition: all 0.2s ease;
+  /* Prevent text selection on iOS and other mobile devices */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Prevent iOS touch callout/context menu */
+  -webkit-touch-callout: none;
+  /* Prevent highlighting */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .file.long-pressing {

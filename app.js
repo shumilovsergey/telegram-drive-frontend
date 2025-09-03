@@ -295,6 +295,11 @@ function renderTree(treeNode, pathArray, container) {
 
         // Mouse/touch start
         function startLongPress(event) {
+          // Prevent text selection and context menu on iOS
+          if (event.touches) {
+            event.preventDefault();
+          }
+          
           const clientX = event.touches ? event.touches[0].clientX : event.clientX;
           const clientY = event.touches ? event.touches[0].clientY : event.clientY;
           startX = clientX;
@@ -321,7 +326,7 @@ function renderTree(treeNode, pathArray, container) {
             if (window.Telegram && window.Telegram.WebApp.HapticFeedback) {
               window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
             }
-          }, 500); // 500ms long press
+          }, 400); // Reduced to 400ms for better mobile feel
         }
 
         // Mouse/touch end
@@ -338,29 +343,42 @@ function renderTree(treeNode, pathArray, container) {
         // Mouse/touch move - cancel long press if moved too much
         function cancelLongPress(event) {
           if (!isDragReady && longPressTimer) {
+            // Prevent scrolling during long press
+            if (event.touches) {
+              event.preventDefault();
+            }
+            
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
             const clientY = event.touches ? event.touches[0].clientY : event.clientY;
             const deltaX = Math.abs(clientX - startX);
             const deltaY = Math.abs(clientY - startY);
             
-            if (deltaX > 10 || deltaY > 10) {
+            // Increased threshold for mobile
+            if (deltaX > 15 || deltaY > 15) {
               clearTimeout(longPressTimer);
               fileEl.classList.remove("long-pressing");
             }
           }
         }
 
-        // Add event listeners
+        // Add event listeners with proper iOS handling
         fileEl.addEventListener("mousedown", startLongPress);
         fileEl.addEventListener("touchstart", startLongPress, { passive: false });
         
         fileEl.addEventListener("mouseup", endLongPress);
-        fileEl.addEventListener("touchend", endLongPress);
+        fileEl.addEventListener("touchend", endLongPress, { passive: false });
         
         fileEl.addEventListener("mousemove", cancelLongPress);
         fileEl.addEventListener("touchmove", cancelLongPress, { passive: false });
         
         fileEl.addEventListener("mouseleave", endLongPress);
+        fileEl.addEventListener("touchcancel", endLongPress); // iOS specific
+        
+        // Prevent context menu on long press (iOS/Android)
+        fileEl.addEventListener("contextmenu", event => {
+          event.preventDefault();
+          return false;
+        });
 
         // Drag start
         fileEl.addEventListener("dragstart", event => {
