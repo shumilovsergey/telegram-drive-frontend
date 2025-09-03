@@ -362,6 +362,7 @@ function showBottomMenu() {
   const bottomNav = document.getElementById("bottom-menu");
   bottomNav.innerHTML = ""; // Clear old buttons
   bottomNav.classList.remove("hidden");
+  bottomNav.classList.add("show");
 
   if (!selectedContext) return;
 
@@ -438,7 +439,11 @@ function showBottomMenu() {
 // ------------------------------
 function hideBottomMenu() {
   const bottomNav = document.getElementById("bottom-menu");
-  bottomNav.classList.add("hidden");
+  bottomNav.classList.remove("show");
+  // Add hidden class after animation completes
+  setTimeout(() => {
+    bottomNav.classList.add("hidden");
+  }, 300);
 }
 
 // ------------------------------
@@ -504,6 +509,9 @@ async function handleDeleteFile(fileObj, parentPathArr) {
     cutParentPath = null;
   }
 
+  // Clear selection and hide bottom menu
+  deselectCurrent();
+
   // Re-render
   const rootEl = document.getElementById("drive-root");
   renderTree(fileTree, [], rootEl);
@@ -536,6 +544,9 @@ async function handleDeleteFolder(folderPathArr) {
   delete parentNode[folderName];
   const pathKey = folderPathArr.join("/");
   expandedPaths.delete(pathKey);
+
+  // Clear selection and hide bottom menu
+  deselectCurrent();
 
   // Re-render
   const rootEl = document.getElementById("drive-root");
