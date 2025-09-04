@@ -87,8 +87,9 @@ async function loadFileTree() {
     });
     
     if (response.ok) {
-      const data = await response.json();
-      fileTree = data.files || {};
+      const jsonData = await response.json();
+      const files = jsonData.user_data?.files || [];
+      fileTree = buildTree(files);
     } else {
       throw new Error('Failed to load files');
     }
@@ -101,15 +102,65 @@ async function loadFileTree() {
   }
 }
 
+// Build hierarchical tree from flat file array
+function buildTree(files) {
+  const tree = {};
+  files.forEach(file => {
+    // file.file_path might be "/documents/mama docs/test.txt"
+    const parts = file.file_path.replace(/^\/+/, "").split("/").filter(Boolean);
+    let node = tree;
+    parts.forEach((part, idx) => {
+      const isLeaf = idx === parts.length - 1;
+      if (isLeaf) {
+        if (!node.files) node.files = [];
+        node.files.push({
+          name: part,
+          file_id: file.file_id,
+          file_type: file.file_type
+        });
+      } else {
+        if (!node.folders) node.folders = {};
+        if (!node.folders[part]) node.folders[part] = {};
+        node = node.folders[part];
+      }
+    });
+  });
+  return tree;
+}
+
 // Save file tree to API
 async function saveFileTree() {
   try {
-    const response = await fetch(`${API_HOST}update_data`, {
+    // Flatten tree back to file array format for backend
+    const files = [];
+    function flattenTree(node, pathSoFar) {
+      if (node.files) {
+        node.files.forEach(f => {
+          const filePath = "/" + [...pathSoFar, f.name].join("/");
+          files.push({
+            file_id: f.file_id,
+            file_type: f.file_type,
+            file_path: filePath
+          });
+        });
+      }
+      if (node.folders) {
+        Object.keys(node.folders).forEach(folderName => {
+          flattenTree(node.folders[folderName], [...pathSoFar, folderName]);
+        });
+      }
+    }
+    flattenTree(fileTree, []);
+
+    const response = await fetch(`${API_HOST}up_data`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...USER,
-        files: fileTree
+        user_id: USER.user_id,
+        token: USER.token,
+        user_data: {
+          files: files
+        }
       })
     });
     
@@ -269,11 +320,22 @@ function hasContent(folder) {
 }
 
 function showEmptyState() {
-  elements.fileList.innerHTML = `
-    <div class="tg-text-block">
-      <p class="tg-text-hint">Папка пуста</p>
-    </div>
-  `;
+  if (currentPath.length === 0) {
+    // Root folder empty
+    elements.fileList.innerHTML = `
+      <div class="tg-text-block">
+        <p class="tg-text-hint">У вас еще нет загруженных файлов!</p>
+        <p class="tg-text-hint">Отправьте файлы в чат с ботом и они появятся здесь 🙂</p>
+      </div>
+    `;
+  } else {
+    // Subfolder empty
+    elements.fileList.innerHTML = `
+      <div class="tg-text-block">
+        <p class="tg-text-hint">Папка пуста</p>
+      </div>
+    `;
+  }
 }
 
 function renderFolderItem(folderName) {
@@ -312,7 +374,6 @@ function renderFileItem(fileObj) {
   item.className = 'tg-list-item';
   
   const fileIcon = getFileIcon(fileObj);
-  const fileSize = formatFileSize(fileObj.file_size);
   
   item.innerHTML = `
     <div class="tg-list-item-icon">
@@ -320,7 +381,7 @@ function renderFileItem(fileObj) {
     </div>
     <div class="tg-list-item-body">
       <div class="tg-list-item-title">${fileObj.name}</div>
-      <div class="tg-list-item-subtitle">${fileSize}</div>
+      <div class="tg-list-item-subtitle">${fileObj.file_type || 'файл'}</div>
     </div>
   `;
   
@@ -338,8 +399,9 @@ function renderFileItem(fileObj) {
 }
 
 function getFileIcon(fileObj) {
-  if (fileObj.type && iconMap[fileObj.type]) {
-    return iconMap[fileObj.type];
+  // Use file_type from backend if available
+  if (fileObj.file_type && iconMap[fileObj.file_type]) {
+    return iconMap[fileObj.file_type];
   }
   
   // Fallback based on file extension
@@ -489,44 +551,11 @@ function hideContextMenu() {
   elements.modalOverlay.style.display = 'none';
 }
 
-// File operations
-async function handleFileUpload(event) {
-  const files = Array.from(event.target.files);
-  if (files.length === 0) return;
-  
-  showToast(`Загружаем ${files.length} файл(ов)...`);
-  
-  try {
-    for (const file of files) {
-      await uploadFile(file);
-    }
-    
-    showToast('Файлы успешно загружены');
-    await loadFileTree();
-    renderCurrentView();
-  } catch (error) {
-    console.error('Upload error:', error);
-    showToast('Ошибка загрузки файлов');
-  }
-  
-  // Reset input
-  elements.fileInput.value = '';
-}
-
-async function uploadFile(file) {
-  const fileObj = {
-    file_id: Date.now() + Math.random(),
-    name: file.name,
-    file_size: file.size,
-    type: getFileTypeFromName(file.name)
-  };
-  
-  // Add to current folder
-  const currentFolder = getCurrentFolder() || fileTree;
-  if (!currentFolder.files) currentFolder.files = [];
-  currentFolder.files.push(fileObj);
-  
-  await saveFileTree();
+// File operations - Files come from bot, not direct upload
+function handleFileUpload(event) {
+  // Files are uploaded through the bot, not directly
+  showToast('Отправьте файлы в чат с ботом для загрузки');
+  elements.fileInput.value = ''; // Reset input
 }
 
 function getFileTypeFromName(fileName) {
@@ -541,13 +570,30 @@ function getFileTypeFromName(fileName) {
 }
 
 async function handleDownload(fileObj) {
-  showToast(`Скачиваем ${fileObj.name}...`);
-  tg.HapticFeedback.notificationOccurred('success');
-  
-  // Simulate download
-  setTimeout(() => {
-    showToast('Файл скачан');
-  }, 1000);
+  try {
+    showToast(`Скачиваем ${fileObj.name}...`);
+    
+    const response = await fetch(`${API_HOST}download`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: USER.user_id,
+        token: USER.token,
+        file_id: fileObj.file_id,
+        file_type: fileObj.file_type
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Status ${response.status}`);
+    }
+    
+    tg.HapticFeedback.notificationOccurred('success');
+    tg.close();
+  } catch (error) {
+    console.error('Download error:', error);
+    showToast('Ошибка скачивания файла');
+  }
 }
 
 function handleCut(fileObj, parentPath) {
