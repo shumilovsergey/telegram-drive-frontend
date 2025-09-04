@@ -7,7 +7,7 @@ tg.setHeaderColor('#527da3');
 tg.setBackgroundColor('#ffffff');
 
 // Development configuration
-const DEBUG = false; // Set to false for production
+const DEBUG = true; // Set to false for production
 const DEV_USER_ID = 507717647;
 
 // User configuration
@@ -60,35 +60,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('USER object:', USER);
   }
   
-  await loadIconMap();
+  loadIconMap();
   await loadFileTree();
   renderCurrentView();
   setupEventListeners();
 });
 
-// Load file type icons mapping
-async function loadIconMap() {
-  try {
-    const response = await fetch('assets/dictionary.json');
-    const data = await response.json();
-    data.forEach(item => {
-      const key = Object.keys(item)[0];
-      iconMap[key] = item[key];
-    });
-  } catch (error) {
-    console.error('Failed to load icon map:', error);
-    // Fallback icon map
-    iconMap = {
-      folder: 'folder.png',
-      photo: 'photo.png',
-      document: 'document.png',
-      video: 'video.png',
-      audio: 'audio.png',
-      voice: 'voice.png',
-      video_note: 'video_note.png',
-      default: 'default.png'
-    };
-  }
+// Load file type icons mapping - now using SVG icons
+function loadIconMap() {
+  // Use SVG icons instead of loading from dictionary.json
+  iconMap = {
+    folder: 'folder',
+    photo: 'photo',
+    document: 'document',
+    video: 'video',
+    voice: 'voice',
+    audio: 'audio',
+    video_note: 'video_note',
+    default: 'default'
+  };
 }
 
 // Load file tree from API
@@ -388,7 +378,7 @@ function renderFolderItem(folderName) {
   item.className = 'drive-list-item folder';
   item.innerHTML = `
     <div class="drive-list-item-icon">
-      <img src="assets/${iconMap.folder}" alt="folder">
+      ${getSVGIconHTML(iconMap.folder)}
     </div>
     <div class="drive-list-item-body">
       <div class="drive-list-item-title">${folderName}</div>
@@ -424,7 +414,7 @@ function renderFileItem(fileObj) {
   
   item.innerHTML = `
     <div class="drive-list-item-icon">
-      <img src="assets/${fileIcon}" alt="file">
+      ${getSVGIconHTML(fileIcon)}
     </div>
     <div class="drive-list-item-body">
       <div class="drive-list-item-title">${fileObj.name}</div>
@@ -1183,7 +1173,7 @@ function renderSearchFolderItem(result) {
   
   item.innerHTML = `
     <div class="drive-list-item-icon">
-      <img src="assets/folder.png" alt="folder">
+      ${getSVGIconHTML('folder')}
     </div>
     <div class="drive-list-item-body">
       <div class="drive-list-item-title">${result.name}</div>
@@ -1224,7 +1214,7 @@ function renderSearchFileItem(result) {
   
   item.innerHTML = `
     <div class="drive-list-item-icon">
-      <img src="assets/${fileIcon}" alt="file">
+      ${getSVGIconHTML(fileIcon)}
     </div>
     <div class="drive-list-item-body">
       <div class="drive-list-item-title">${result.name}</div>

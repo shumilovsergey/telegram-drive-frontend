@@ -388,7 +388,8 @@ html, body {
   flex-shrink: 0;
 }
 
-.drive-list-item-icon img {
+.drive-list-item-icon img,
+.drive-list-item-icon svg {
   width: 24px;
   height: 24px;
   object-fit: contain;
@@ -968,8 +969,12 @@ html, body {
 
 /* High DPI screens */
 @media (-webkit-min-device-pixel-ratio: 2) {
-  .tg-list-item-icon img {
+  .drive-list-item-icon img {
     image-rendering: -webkit-optimize-contrast;
+  }
+  
+  .drive-list-item-icon svg {
+    shape-rendering: crispEdges;
   }
 }
 
