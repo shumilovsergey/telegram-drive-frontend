@@ -381,7 +381,7 @@ function renderFolderItem(folderName) {
     </div>
     <div class="drive-list-item-body">
       <div class="drive-list-item-title">${folderName}</div>
-      <div class="drive-list-item-subtitle">Изменено недавно</div>
+
     </div>
     <div class="drive-list-item-actions">
       <button class="drive-list-item-menu" data-action="menu">
@@ -418,8 +418,6 @@ function renderFileItem(fileObj) {
     <div class="drive-list-item-body">
       <div class="drive-list-item-title">${fileObj.name}</div>
       <div class="drive-list-item-subtitle">
-        <span>Изменено недавно</span>
-        <span>•</span>
         <span>${fileObj.file_type || 'файл'}</span>
       </div>
     </div>
