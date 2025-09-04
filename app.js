@@ -7,7 +7,9 @@ tg.setHeaderColor('#527da3');
 tg.setBackgroundColor('#ffffff');
 
 // Development configuration
-const DEBUG = true; // Set to false for production
+
+// const DEBUG = true; 
+const DEBUG = false; 
 const DEV_USER_ID = 507717647;
 
 // User configuration
@@ -34,7 +36,6 @@ let searchQuery = '';
 const elements = {
   headerTitle: document.getElementById('header-title'),
   backBtn: document.getElementById('back-btn'),
-  infoBtn: document.getElementById('info-btn'),
   fileList: document.getElementById('file-list'),
   breadcrumb: document.getElementById('breadcrumb'),
   currentFolderMenu: document.getElementById('current-folder-menu'),
@@ -58,12 +59,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (DEBUG) {
     console.log('DEBUG MODE: Using dev user ID:', DEV_USER_ID);
     console.log('USER object:', USER);
+    
+    // Show debug indicator in header
+    const debugIndicator = document.getElementById('debug-indicator');
+    if (debugIndicator) {
+      debugIndicator.style.display = 'block';
+    }
   }
   
   loadIconMap();
   await loadFileTree();
   renderCurrentView();
   setupEventListeners();
+  
 });
 
 // Load file type icons mapping - now using SVG icons
@@ -200,7 +208,6 @@ async function saveFileTree() {
 function setupEventListeners() {
   // Header navigation
   document.querySelector('.drive-back-button').addEventListener('click', navigateBack);
-  elements.infoBtn.addEventListener('click', showInfoPage);
   
   // Current folder menu
   elements.currentFolderMenu.addEventListener('click', showCurrentFolderMenu);
@@ -221,11 +228,10 @@ function setupEventListeners() {
   // Modal overlay
   elements.modalOverlay.addEventListener('click', hideAllModals);
   
+  
   // Context menu
   setupContextMenu();
   
-  // Info page buttons
-  setupInfoPageButtons();
   
   // Hide context menu and dropdowns on body click
   document.body.addEventListener('click', (e) => {
@@ -254,18 +260,11 @@ function navigateBack() {
   }
 }
 
-function showInfoPage() {
-  elements.fileBrowser.classList.add('hidden');
-  elements.infoPage.classList.remove('hidden');
-  elements.headerTitle.textContent = 'О приложении';
-  updateBackButton(true);
-  hideBottomBar();
-}
 
 function showFileBrowser() {
   elements.infoPage.classList.add('hidden');
   elements.fileBrowser.classList.remove('hidden');
-  elements.headerTitle.textContent = 'Облачный диск';
+  elements.headerTitle.textContent = '☁️';
   updateBackButton();
   updateBottomBar();
 }
@@ -295,8 +294,8 @@ function updateBreadcrumb() {
 }
 
 function updateHeaderTitle() {
-  const title = currentPath.length === 0 ? 'Облачный диск' : currentPath[currentPath.length - 1];
-  elements.headerTitle.textContent = title;
+  // Keep header title static as cloud emoji
+  elements.headerTitle.textContent = '☁️';
 }
 
 function renderFileList() {
@@ -999,29 +998,6 @@ function handleDrop(e) {
   }
 }
 
-// Info page setup
-function setupInfoPageButtons() {
-  document.getElementById('website-btn').addEventListener('click', () => {
-    tg.openLink('https://sh-development.ru');
-  });
-  
-  document.getElementById('telegram-btn').addEventListener('click', () => {
-    tg.openTelegramLink('https://t.me/sh_development');
-  });
-  
-  document.getElementById('email-btn').addEventListener('click', () => {
-    const email = 'wumilovsergey@gmail.com';
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(email).then(() => {
-        showToast(`Email скопирован: ${email}`);
-      }).catch(() => {
-        showToast(`Скопируйте вручную: ${email}`);
-      });
-    } else {
-      showToast(`Скопируйте вручную: ${email}`);
-    }
-  });
-}
 
 // Utility functions
 function showToast(message, duration = 3000) {
