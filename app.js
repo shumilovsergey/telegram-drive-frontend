@@ -2,7 +2,7 @@
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
-tg.enableClosingConfirmation();
+// tg.enableClosingConfirmation(); // Removed to allow seamless app closing
 tg.setHeaderColor('#527da3');
 tg.setBackgroundColor('#ffffff');
 

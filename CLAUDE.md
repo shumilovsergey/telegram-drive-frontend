@@ -18,8 +18,9 @@ This is a Telegram Mini App frontend for a cloud drive service. It's a pure fron
 - `index.html` - Main HTML structure with Telegram-native navigation, file browser, search, and modals
 - `app.js` - Core application logic (~1600+ lines) with modular function organization
 - `style.css` - Telegram Web App theming with backdrop blur effects and responsive design
-- `assets/dictionary.json` - File type to icon mapping for visual file browser
-- `assets/*.png` - File type icons (photo, document, video, audio, voice, video_note, default) and background
+- `assets/dictionary.json` - File type to icon mapping for visual file browser  
+- `assets/icons.js` - Icon handling utilities
+- `assets/*.png` - File type icons (photo, document, video, audio, voice, video_note, default, folder) and background
 
 ### Application Structure
 
@@ -46,14 +47,23 @@ The app maintains client-side state through global variables in `app.js`:
 
 All file operations sync with backend via `/get_data` and `/update_data` endpoints using the user's Telegram ID and a secret token. The app includes debug mode configuration for development.
 
+- **Backend URL**: `https://tgdrive-backend.sh-development.ru/`
+- **Authentication**: Uses user ID + hardcoded token `"my_secret_token"`
+- **Data Persistence**: File tree state is synced to/from backend on load/save operations
+
 ## Development Commands
 
 Since this is a vanilla JavaScript project, there are no build commands. For development:
 
 - Serve files via local HTTP server: `python -m http.server 8000` or similar
 - Open in browser and use Telegram Web Apps dev tools
-- Set `DEBUG = true` in app.js for development mode (uses hardcoded user ID)
+- Set `DEBUG = true` in app.js for development mode (uses hardcoded user ID: 507717647)
 - No linting, testing, or build processes configured
+
+### Debug Configuration
+- Debug mode is controlled by `DEBUG` constant in app.js line 10
+- Debug mode uses hardcoded `DEV_USER_ID = 507717647` instead of Telegram user ID
+- Production mode reads user ID from `tg.initDataUnsafe?.user?.id`
 
 ## Code Architecture
 
@@ -82,3 +92,10 @@ The main application logic in `app.js` is organized into functional modules:
 - Event delegation for dynamic UI elements
 - Global state management through module-level variables
 - Telegram Web App theming integration
+
+## Important Constants & Configuration
+
+- **Telegram Integration**: App is initialized with `tg.ready()`, `tg.expand()`, `tg.enableClosingConfirmation()` 
+- **Theme Colors**: Header `#527da3`, Background `#ffffff`
+- **File Icons**: Mapped via dictionary.json - folder, photo, document, video, audio, voice, video_note, default
+- **Global DOM Elements**: Cached in `elements` object (app.js:34-50) for performance
