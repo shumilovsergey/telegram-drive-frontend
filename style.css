@@ -67,7 +67,7 @@ html, body {
   flex-direction: column;
   min-height: 100vh;
   height: 100vh;
-  padding-top: 60px; /* Add padding to avoid overlap with Telegram native header */
+  padding-top: 120px; /* Add padding to avoid overlap with Telegram native header */
   padding-bottom: 0; /* Remove safe area padding for true full-screen */
   background-color: var(--surface-secondary);
 }
