@@ -8,8 +8,8 @@ tg.setBackgroundColor('#ffffff');
 
 // Development configuration
 
-// const DEBUG = true; 
-const DEBUG = false; 
+const DEBUG = true; 
+// const DEBUG = false; 
 const DEV_USER_ID = 507717647;
 
 // User configuration
@@ -133,27 +133,45 @@ function buildTree(files) {
   const tree = {};
   files.forEach(file => {
     console.log('Processing file:', file);
-    // file.file_path might be "/documents/mama docs/test.txt"
-    const parts = file.file_path.replace(/^\/+/, "").split("/").filter(Boolean);
-    console.log('File path parts:', parts);
-    let node = tree;
-    parts.forEach((part, idx) => {
-      const isLeaf = idx === parts.length - 1;
-      if (isLeaf) {
-        if (!node.files) node.files = [];
-        node.files.push({
-          name: part,
-          file_id: file.file_id,
-          file_type: file.file_type
-        });
-        console.log('Added file to node:', part, 'in folder:', node);
-      } else {
+    
+    // Check if this is an empty folder entry (ends with "/" and has file_type "folder")
+    if (file.file_type === 'folder' && file.file_path.endsWith('/')) {
+      // Handle empty folder
+      const folderPath = file.file_path.replace(/^\/+/, "").replace(/\/+$/, "");
+      const parts = folderPath ? folderPath.split("/").filter(Boolean) : [];
+      console.log('Processing empty folder with parts:', parts);
+      
+      let node = tree;
+      parts.forEach(part => {
         if (!node.folders) node.folders = {};
         if (!node.folders[part]) node.folders[part] = {};
         node = node.folders[part];
         console.log('Created/navigated to folder:', part);
-      }
-    });
+      });
+    } else {
+      // Handle regular file
+      // file.file_path might be "/documents/mama docs/test.txt"
+      const parts = file.file_path.replace(/^\/+/, "").split("/").filter(Boolean);
+      console.log('File path parts:', parts);
+      let node = tree;
+      parts.forEach((part, idx) => {
+        const isLeaf = idx === parts.length - 1;
+        if (isLeaf) {
+          if (!node.files) node.files = [];
+          node.files.push({
+            name: part,
+            file_id: file.file_id,
+            file_type: file.file_type
+          });
+          console.log('Added file to node:', part, 'in folder:', node);
+        } else {
+          if (!node.folders) node.folders = {};
+          if (!node.folders[part]) node.folders[part] = {};
+          node = node.folders[part];
+          console.log('Created/navigated to folder:', part);
+        }
+      });
+    }
   });
   console.log('Final tree structure:', tree);
   return tree;
@@ -177,7 +195,22 @@ async function saveFileTree() {
       }
       if (node.folders) {
         Object.keys(node.folders).forEach(folderName => {
-          flattenTree(node.folders[folderName], [...pathSoFar, folderName]);
+          const folderNode = node.folders[folderName];
+          // Check if this folder is empty (no files and no subfolders)
+          const isEmpty = (!folderNode.files || folderNode.files.length === 0) && 
+                         (!folderNode.folders || Object.keys(folderNode.folders).length === 0);
+          
+          if (isEmpty) {
+            // Save empty folder as a special entry
+            const folderPath = "/" + [...pathSoFar, folderName].join("/") + "/";
+            files.push({
+              file_id: `folder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              file_type: 'folder',
+              file_path: folderPath
+            });
+          }
+          
+          flattenTree(folderNode, [...pathSoFar, folderName]);
         });
       }
     }
