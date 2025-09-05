@@ -2,6 +2,8 @@
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
+// Request full-screen mode for true edge-to-edge experience
+tg.requestFullscreen();
 // tg.enableClosingConfirmation(); // Removed to allow seamless app closing
 // Remove custom header colors for minimalist look like BotFather
 // tg.setHeaderColor('#527da3');

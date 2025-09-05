@@ -65,10 +65,10 @@ html, body {
 #app {
   display: flex;
   flex-direction: column;
-  min-height: var(--tg-viewport-height);
-  height: var(--tg-viewport-height);
-  padding-top: var(--tg-content-safe-area-inset-top);
-  padding-bottom: var(--tg-content-safe-area-inset-bottom);
+  min-height: 100vh;
+  height: 100vh;
+  padding-top: 0; /* Remove safe area padding for true full-screen */
+  padding-bottom: 0; /* Remove safe area padding for true full-screen */
   background-color: var(--surface-secondary);
 }
 
