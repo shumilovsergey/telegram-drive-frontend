@@ -9,8 +9,8 @@ tg.expand();
 
 // Development configuration
 
-const DEBUG = true; 
-// const DEBUG = false; 
+// const DEBUG = true; 
+const DEBUG = false; 
 const DEV_USER_ID = 507717647;
 
 // User configuration
