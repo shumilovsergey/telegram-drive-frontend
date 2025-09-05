@@ -3,8 +3,9 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 // tg.enableClosingConfirmation(); // Removed to allow seamless app closing
-tg.setHeaderColor('#527da3');
-tg.setBackgroundColor('#ffffff');
+// Remove custom header colors for minimalist look like BotFather
+// tg.setHeaderColor('#527da3');
+// tg.setBackgroundColor('#ffffff');
 
 // Development configuration
 
@@ -1050,19 +1051,15 @@ function hideLoader() {
   console.log('Loading complete');
 }
 
-// Initialize Telegram Web App theme handling
+// Initialize Telegram Web App theme handling - HARDCODED TO DARK MODE
 function initializeTheme() {
-  if (tg.colorScheme === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
+  // Force dark theme always
+  document.documentElement.setAttribute('data-theme', 'dark');
   
-  // Listen for theme changes
+  // Listen for theme changes but ignore them - always stay dark
   tg.onEvent('themeChanged', () => {
-    if (tg.colorScheme === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
+    // Always force dark theme regardless of system preference
+    document.documentElement.setAttribute('data-theme', 'dark');
   });
 }
 

@@ -185,14 +185,14 @@ html, body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: var(--tg-spacing-md);
+  padding: 0; /* Remove padding for minimalist BotFather-like design */
 }
 
 .tg-section {
   width: 100%;
   background: var(--surface-primary);
-  border-radius: var(--tg-border-radius-large);
-  box-shadow: var(--shadow-soft);
+  border-radius: 0; /* Remove border radius for edge-to-edge design */
+  box-shadow: none; /* Remove shadow for cleaner look */
   overflow: hidden;
 }
 
