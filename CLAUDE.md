@@ -16,9 +16,9 @@ This is a Telegram Mini App frontend for a cloud drive service. It's a pure fron
 ### Key Files
 
 - `index.html` - Main HTML structure with Telegram-native navigation, file browser, search, and modals
-- `app.js` - Core application logic (~1600+ lines) with modular function organization
+- `app.js` - Core application logic (~1600+ lines) with modular function organization and platform-specific launch modes
 - `style.css` - Telegram Web App theming with backdrop blur effects and responsive design
-- `assets/dictionary.json` - File type to icon mapping for visual file browser  
+- `assets/dictionary.json` - File type to icon mapping for visual file browser
 - `assets/icons.js` - Icon handling utilities
 - `assets/*.png` - File type icons (photo, document, video, audio, voice, video_note, default, folder) and background
 
@@ -58,6 +58,16 @@ Since this is a vanilla JavaScript project, there are no build commands. For dev
 - Serve files via local HTTP server: `python -m http.server 8000` or similar
 - Open in browser and use Telegram Web Apps dev tools
 - No linting, testing, or build processes configured
+
+### Platform-Specific Launch Modes
+
+The app automatically detects the user's platform and applies appropriate launch mode:
+
+- **Desktop** (`web`, `macos`, `windows`, `linux`): Uses `expand()` for **fullsize mode**
+- **Mobile** (`android`, `ios`, `mobile`): Uses `requestFullscreen()` for **fullscreen mode** (API 8.0+)
+- **Fallback**: Uses `expand()` if fullscreen is unavailable or on unknown platforms
+
+The app includes comprehensive error handling and automatic fallback mechanisms for older Telegram versions.
 
 
 ## Code Architecture

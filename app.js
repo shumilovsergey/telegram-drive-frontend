@@ -7,16 +7,60 @@ if (!tg) {
   // For testing outside Telegram, you could add fallback behavior here
 }
 
-// Initialize the Web App
+// Initialize the Web App with platform-specific launch mode
 if (tg) {
+  console.log('Telegram Web App platform:', tg.platform);
+  console.log('Telegram Web App version:', tg.version);
+  console.log('Is fullscreen supported:', tg.isVersionAtLeast && tg.isVersionAtLeast('8.0'));
+
   tg.ready();
-  tg.expand();
+
+  // Platform-based launch mode selection
+  const platform = tg.platform;
+  const isDesktop = platform === 'web' || platform === 'macos' || platform === 'windows' || platform === 'linux';
+  const isMobile = platform === 'android' || platform === 'ios' || platform === 'mobile';
+
+  console.log('Detected platform type:', { platform, isDesktop, isMobile });
+
+  if (isDesktop) {
+    // Desktop: Use expand for fullsize mode
+    console.log('Desktop detected: using expand() for fullsize mode');
+    tg.expand();
+  } else if (isMobile) {
+    // Mobile: Try to use fullscreen mode if available
+    console.log('Mobile detected: attempting fullscreen mode');
+    if (tg.isVersionAtLeast && tg.isVersionAtLeast('8.0')) {
+      tg.requestFullscreen();
+
+      // Listen for fullscreen events
+      tg.onEvent('fullscreenChanged', () => {
+        console.log('Fullscreen status changed:', tg.isFullscreen);
+      });
+
+      tg.onEvent('fullscreenFailed', () => {
+        console.log('Fullscreen request failed, falling back to expand');
+        tg.expand();
+      });
+
+      // Add safety timeout for fullscreen request
+      setTimeout(() => {
+        if (!tg.isFullscreen) {
+          console.log('Fullscreen timeout reached, falling back to expand');
+          tg.expand();
+        }
+      }, 1000);
+    } else {
+      console.log('Fullscreen not supported, using expand instead');
+      tg.expand();
+    }
+  } else {
+    // Unknown platform: default to expand
+    console.log('Unknown platform, defaulting to expand');
+    tg.expand();
+  }
 } else {
   console.warn('Skipping Telegram Web App initialization - API not available');
 }
-
-// Note: requestFullscreen is not supported in version 6.0 and was removed
-// Use expand() instead for maximum viewport usage
 
 // Optional: Enable closing confirmation if needed
 // tg.enableClosingConfirmation();
