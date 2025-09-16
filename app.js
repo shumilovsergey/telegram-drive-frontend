@@ -1,29 +1,81 @@
 // Telegram Web App Integration
-const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
-// Request full-screen mode for true edge-to-edge experience
-tg.requestFullscreen();
-// tg.enableClosingConfirmation(); // Removed to allow seamless app closing
-// Remove custom header colors for minimalist look like BotFather
-// tg.setHeaderColor('#527da3');
-// tg.setBackgroundColor('#ffffff');
+const tg = window.Telegram?.WebApp;
 
-// User configuration
+// Check if Web App API is available
+if (!tg) {
+  console.error('Telegram Web App API not available - app may not be running in Telegram');
+  // For testing outside Telegram, you could add fallback behavior here
+}
+
+// Initialize the Web App
+if (tg) {
+  tg.ready();
+  tg.expand();
+} else {
+  console.warn('Skipping Telegram Web App initialization - API not available');
+}
+
+// Note: requestFullscreen is not supported in version 6.0 and was removed
+// Use expand() instead for maximum viewport usage
+
+// Optional: Enable closing confirmation if needed
+// tg.enableClosingConfirmation();
+
+// User configuration with error handling
+console.log('Telegram Web App version:', tg?.version);
+console.log('Telegram initData available:', !!tg?.initData);
+console.log('Telegram initDataUnsafe:', tg?.initDataUnsafe);
+
 const USER = {
-  user_id: tg.initDataUnsafe?.user?.id,
-  initData: tg.initData  // Real Telegram initData for secure authentication
+  user_id: tg?.initDataUnsafe?.user?.id,
+  initData: tg?.initData  // Real Telegram initData for secure authentication
 };
+
+// Validate user data
+if (!USER.user_id) {
+  console.error('No user ID available from Telegram Web App');
+  if (!tg) {
+    console.error('  -> Telegram Web App API is not available');
+  } else if (!tg.initDataUnsafe) {
+    console.error('  -> initDataUnsafe is not available');
+  } else if (!tg.initDataUnsafe.user) {
+    console.error('  -> user data is not available in initDataUnsafe');
+  }
+}
+
+if (!USER.initData) {
+  console.error('No initData available from Telegram Web App - authentication will fail');
+  if (!tg) {
+    console.error('  -> Telegram Web App API is not available');
+  } else {
+    console.error('  -> initData property is empty or undefined');
+  }
+}
+
+console.log('USER object:', {
+  user_id: USER.user_id,
+  hasInitData: !!USER.initData,
+  initDataLength: USER.initData?.length || 0
+});
 
 const API_HOST = "https://tgdrive-backend.sh-development.ru/";
 
 // Helper function for secure API requests
 function getAuthPayload(additionalData = {}) {
-  return {
+  const payload = {
     user_id: USER.user_id,
     initData: USER.initData,
     ...additionalData
   };
+
+  console.log('API payload:', {
+    hasUserId: !!payload.user_id,
+    hasInitData: !!payload.initData,
+    initDataLength: payload.initData?.length || 0,
+    additionalKeys: Object.keys(additionalData)
+  });
+
+  return payload;
 }
 
 // Application state
@@ -62,15 +114,11 @@ const elements = {
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', async () => {
-  if (DEBUG) {
-    console.log('DEBUG MODE: Using dev user ID:', DEV_USER_ID);
-    console.log('USER object:', USER);
-    
-    // Show debug indicator in header
-    const debugIndicator = document.getElementById('debug-indicator');
-    if (debugIndicator) {
-      debugIndicator.style.display = 'block';
-    }
+  // Authentication validation
+  if (!USER.user_id || !USER.initData) {
+    console.error('Authentication failed - missing user data or initData');
+    showToast('Ошибка аутентификации. Пожалуйста, откройте приложение через Telegram.', 5000);
+    return;
   }
   
   loadIconMap();
