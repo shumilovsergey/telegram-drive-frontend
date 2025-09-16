@@ -57,13 +57,8 @@ Since this is a vanilla JavaScript project, there are no build commands. For dev
 
 - Serve files via local HTTP server: `python -m http.server 8000` or similar
 - Open in browser and use Telegram Web Apps dev tools
-- Set `DEBUG = true` in app.js for development mode (uses hardcoded user ID: 507717647)
 - No linting, testing, or build processes configured
 
-### Debug Configuration
-- Debug mode is controlled by `DEBUG` constant in app.js line 10
-- Debug mode uses hardcoded `DEV_USER_ID = 507717647` instead of Telegram user ID
-- Production mode reads user ID from `tg.initDataUnsafe?.user?.id`
 
 ## Code Architecture
 

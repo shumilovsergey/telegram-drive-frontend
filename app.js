@@ -9,19 +9,22 @@ tg.requestFullscreen();
 // tg.setHeaderColor('#527da3');
 // tg.setBackgroundColor('#ffffff');
 
-// Development configuration
-
-// const DEBUG = true; 
-const DEBUG = false; 
-const DEV_USER_ID = 507717647;
-
 // User configuration
 const USER = {
-  user_id: DEBUG ? DEV_USER_ID : tg.initDataUnsafe?.user?.id,
-  token: "my_secret_token"
+  user_id: tg.initDataUnsafe?.user?.id,
+  initData: tg.initData  // Real Telegram initData for secure authentication
 };
 
 const API_HOST = "https://tgdrive-backend.sh-development.ru/";
+
+// Helper function for secure API requests
+function getAuthPayload(additionalData = {}) {
+  return {
+    user_id: USER.user_id,
+    initData: USER.initData,
+    ...additionalData
+  };
+}
 
 // Application state
 let iconMap = {};
@@ -101,7 +104,7 @@ async function loadFileTree() {
     const response = await fetch(`${API_HOST}get_data`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(USER)
+      body: JSON.stringify(getAuthPayload())
     });
     
     console.log('API response status:', response.status);
@@ -222,13 +225,11 @@ async function saveFileTree() {
     const response = await fetch(`${API_HOST}up_data`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: USER.user_id,
-        token: USER.token,
+      body: JSON.stringify(getAuthPayload({
         user_data: {
           files: files
         }
-      })
+      }))
     });
     
     if (!response.ok) {
@@ -828,12 +829,10 @@ async function handleDownload(fileObj) {
     const response = await fetch(`${API_HOST}download`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: USER.user_id,
-        token: USER.token,
+      body: JSON.stringify(getAuthPayload({
         file_id: fileObj.file_id,
         file_type: fileObj.file_type
-      })
+      }))
     });
     
     if (!response.ok) {
@@ -1407,15 +1406,13 @@ async function handleRenameFile(fileObj, parentPathArr) {
 
 async function handleDownload(fileObj) {
   try {
-    const resp = await fetch(`${API_HOST}/download`, {
+    const resp = await fetch(`${API_HOST}download`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: USER.user_id,
-        token: USER.token,
+      body: JSON.stringify(getAuthPayload({
         file_id: fileObj.file_id,
         file_type: fileObj.file_type
-      })
+      }))
     });
     if (!resp.ok) {
       throw new Error(`Status ${resp.status}`);
